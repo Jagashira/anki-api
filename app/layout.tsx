@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Image from "next/image";
+import styles from "@/app/ui/Layout.module.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +24,35 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const Background = () => {
+    return (
+      <>
+        <div className={`fixed top-0 left-0 w-full h-screen z-[-1]`}>
+          <Image
+            src={`/img/background/background.jpeg`}
+            layout={`fill`}
+            objectFit={`cover`}
+            alt="background image"
+            className="bg-[rgba(0,0,0,.5)]"
+          />
+        </div>
+      </>
+    );
+  };
+  const Header = () => {
+    return (
+      <>
+        <div className="pt-[10vw]"></div>
+      </>
+    );
+  };
+
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={styles.wrapper}>
+        <Header />
+        <Background />
+
         {children}
       </body>
     </html>
