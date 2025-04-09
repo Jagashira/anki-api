@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { word } = await req.json();
+  const { word, selectedTag } = await req.json();
+  console.log(word, selectedTag);
 
   if (!word) {
     return NextResponse.json(
@@ -79,12 +80,13 @@ export async function POST(req: NextRequest) {
       version: 6,
       params: {
         note: {
-          deckName: "English Word",
+          deckName: `English Word`,
           modelName: "Basic",
           fields: {
             Front: `${word}`,
             Back: formattedGenerated, // `<br>` で改行を反映
           },
+          tags: [`${selectedTag}`],
         },
       },
     }),
