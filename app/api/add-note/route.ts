@@ -1,8 +1,9 @@
+import { getImageUrl } from "@/app/lib/getImageUrl";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { word, selectedTag } = await req.json();
-  console.log(word, selectedTag);
+  const { word, selectedTag, selectedDeck } = await req.json();
+  console.log(word, selectedTag, selectedDeck);
 
   if (!word) {
     return NextResponse.json(
@@ -41,6 +42,35 @@ export async function POST(req: NextRequest) {
 
 使い方:
 💡 ...`;
+  //画像
+
+  const imageUrl = await getImageUrl(word);
+  if (!imageUrl) {
+    return new Response(JSON.stringify({ error: "画像の取得に失敗しました" }), {
+      status: 500,
+    });
+  }
+  // 画像データを取得してBase64化
+  const imageRes = await fetch(imageUrl);
+  const buffer = await imageRes.arrayBuffer();
+  const base64Image = Buffer.from(buffer).toString("base64");
+  const fileName = `${word}_${Date.now()}.jpg`;
+
+  // AnkiConnect: storeMediaFile
+  await fetch("http://127.0.0.1:8765", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "storeMediaFile",
+      version: 6,
+      params: {
+        filename: fileName,
+        data: base64Image,
+      },
+    }),
+  });
+
+  //openai
 
   const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -66,11 +96,13 @@ export async function POST(req: NextRequest) {
   }
 
   // 改行を `<br>` に変換する処理
-  const formattedGenerated = generated
-    .replace(/（/g, "(")
-    .replace(/）/g, ")")
-    .replace(/\n+/g, "<br>") // 改行を `<br>` に置き換え
-    .replace(/([^\n]+)(\n)?/g, "$1<br>"); // 改行を `<br>` に置き換え
+  const formattedGenerated =
+    generated
+      .replace(/（/g, "(")
+      .replace(/）/g, ")")
+      .replace(/\n+/g, "<br>") // 改行を `<br>` に置き換え
+      .replace(/([^\n]+)(\n)?/g, "$1<br> ") +
+    `<br><img src="${`data:image/jpeg;base64,${base64Image}`}" alt="${word}">`; // 改行を `<br>` に置き換え
 
   const ankiRes = await fetch("http://127.0.0.1:8765", {
     method: "POST",
@@ -80,7 +112,7 @@ export async function POST(req: NextRequest) {
       version: 6,
       params: {
         note: {
-          deckName: `English Word`,
+          deckName: `${selectedDeck}`,
           modelName: "Basic",
           fields: {
             Front: `${word}`,
@@ -101,5 +133,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     message: "Ankiに追加しました",
     content: formattedGenerated,
+    image: {
+      base64: base64Image,
+      fileName,
+    },
   });
 }

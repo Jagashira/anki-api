@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import imageContainer from "@/app/lib/imageContainer";
 
 export default function HomePage() {
   const [word, setWord] = useState("");
@@ -8,7 +9,10 @@ export default function HomePage() {
   const [tags, setTags] = useState<string[]>([]);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [decks, setDecks] = useState<string[]>([]);
-  const [selectedDeck, setSelectedDeck] = useState<string>(""); // 選択されたデッキ
+  const [selectedDeck, setSelectedDeck] = useState<string>();
+  const [img, setimg] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  (""); // 選択されたデッキ
 
   // サーバーサイドでタグを取得する関数
   const fetchTags = async () => {
@@ -53,13 +57,14 @@ export default function HomePage() {
 
   const handleDeckChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDeck(e.target.value);
+    console.log("test", e.target.value);
   };
 
   const handleAddWord = async () => {
     const res = await fetch("/api/add-note", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word, selectedTag }),
+      body: JSON.stringify({ word, selectedTag, selectedDeck }),
     });
     console.log(selectedTag);
 
@@ -68,9 +73,12 @@ export default function HomePage() {
     if (res.ok) {
       setMessage("✅ " + data.message);
       setResult(data.content);
+      setimg(`data:image/jpeg;base64,${data.image.base64}`);
+      setStatus("Ankiに追加されました！");
     } else {
       setMessage("❌ " + data.error);
       setResult("");
+      setStatus(`エラー: ${data.error}`);
     }
   };
   useEffect(() => {
@@ -138,6 +146,14 @@ export default function HomePage() {
           <pre className="whitespace-pre-wrap">
             <div dangerouslySetInnerHTML={{ __html: result }} />
           </pre>
+        </div>
+      )}
+      <p>{status}</p>
+
+      {img && (
+        <div>
+          <h3 className="font-semibold mt-4">取得した画像：</h3>
+          {imageContainer({ img, word })}
         </div>
       )}
     </div>
