@@ -7,6 +7,8 @@ export default function HomePage() {
   const [result, setResult] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [decks, setDecks] = useState<string[]>([]);
+  const [selectedDeck, setSelectedDeck] = useState<string>(""); // 選択されたデッキ
 
   // サーバーサイドでタグを取得する関数
   const fetchTags = async () => {
@@ -28,13 +30,29 @@ export default function HomePage() {
       console.error("タグの取得に失敗:", error);
     }
   };
+  const fetchDecks = async () => {
+    try {
+      const response = await fetch("/api/fetch-decks", {
+        method: "POST",
+      });
+      const data = await response.json();
 
-  useEffect(() => {
-    fetchTags(); // コンポーネントがマウントされたときにタグを取得
-  }, []);
+      if (data.error) {
+        console.error("デッキ名の取得に失敗:", data.error);
+      } else {
+        setDecks(data.decks); // 取得したデッキ名をセット
+      }
+    } catch (error) {
+      console.error("デッキ名の取得に失敗:", error);
+    }
+  };
 
   const handleTagChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedTag(e.target.value);
+  };
+
+  const handleDeckChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedDeck(e.target.value);
   };
 
   const handleAddWord = async () => {
@@ -55,30 +73,58 @@ export default function HomePage() {
       setResult("");
     }
   };
+  useEffect(() => {
+    fetchTags(); // タグを取得
+    fetchDecks(); // デッキ名を取得
+  }, []);
 
   return (
     <div className="p-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4">
-        英単語 → ChatGPT解説 → Anki追加
-      </h1>
-      <div className="flex">
-        <input
-          className="w-[70%] p-2 border rounded mb-2"
-          placeholder="例: parse"
-          value={word}
-          onChange={(e) => setWord(e.target.value)}
-        />
-        <div className="w-[30%]">
-          <select id="tags" value={selectedTag} onChange={handleTagChange}>
-            <option value="">タグを選択</option>
+      <h1 className="text-4xl font-bold mb-4 ">英単語簡単に覚える君</h1>
+
+      <div>
+        <form className="max-w-sm mx-auto">
+          <select
+            id="decks"
+            className="block py-2.5 px-0 w-full text-sm text-gray-500 bg-transparent border-0 border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-gray-200 peer"
+            value={selectedDeck}
+            onChange={handleDeckChange}
+          >
+            <option value="">~Choose Your Deck~</option>
+            {decks.map((decks, index) => (
+              <option key={index} value={decks}>
+                {decks}
+              </option>
+            ))}
+          </select>
+        </form>
+        <form className="max-w-sm mx-auto">
+          <select
+            id="tags"
+            className="block py-2.5 px-0 w-full text-sm text-gray-500 bg-transparent border-0 border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-gray-200 peer"
+            value={selectedTag}
+            onChange={handleTagChange}
+          >
+            <option value="">~Choose Your Tag~</option>
             {tags.map((tag, index) => (
               <option key={index} value={tag}>
                 {tag}
               </option>
             ))}
           </select>
-        </div>
+        </form>
       </div>
+
+      <div className="">
+        <input
+          className=" p-2 border rounded mb-2"
+          placeholder="例: parse"
+          value={word}
+          onChange={(e) => setWord(e.target.value)}
+        />
+        <div className=""></div>
+      </div>
+
       <button
         onClick={handleAddWord}
         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
