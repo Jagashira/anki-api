@@ -1,4 +1,5 @@
 import { getImageUrl } from "@/app/lib/getImageUrl";
+import getAudioFromGoogle from "@/app/lib/getAudio";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -56,6 +57,9 @@ export async function POST(req: NextRequest) {
   const base64Image = Buffer.from(buffer).toString("base64");
   const fileName = `${word}_${Date.now()}.jpg`;
 
+  //音声の取得
+  const audio = await getAudioFromGoogle(word);
+
   // AnkiConnect: storeMediaFile
   await fetch("http://127.0.0.1:8765", {
     method: "POST",
@@ -102,7 +106,9 @@ export async function POST(req: NextRequest) {
       .replace(/）/g, ")")
       .replace(/\n+/g, "<br>") // 改行を `<br>` に置き換え
       .replace(/([^\n]+)(\n)?/g, "$1<br> ") +
-    `<br><img src="${`data:image/jpeg;base64,${base64Image}`}" alt="${word}">`; // 改行を `<br>` に置き換え
+    `<br><img src="${`data:image/jpeg;base64,${base64Image}`}" alt="${word}"><br><br><audio controls><source src="data:audio/mp3;base64,${
+      audio.base64
+    }" type="audio/mp3"></audio>`; // 改行を `<br>` に置き換え
 
   const ankiRes = await fetch("http://127.0.0.1:8765", {
     method: "POST",
@@ -136,6 +142,10 @@ export async function POST(req: NextRequest) {
     image: {
       base64: base64Image,
       fileName,
+    },
+    audio: {
+      base64: audio.base64,
+      fileName: audio.fileName,
     },
   });
 }

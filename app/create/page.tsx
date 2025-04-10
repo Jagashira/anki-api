@@ -11,6 +11,7 @@ export default function HomePage() {
   const [decks, setDecks] = useState<string[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<string>();
   const [img, setimg] = useState<string | null>(null);
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   (""); // 選択されたデッキ
 
@@ -70,17 +71,23 @@ export default function HomePage() {
 
     const data = await res.json();
 
+    if (data.audio?.base64) {
+      setAudioSrc(`data:audio/mp3;base64,${data.audio.base64}`);
+    }
+
     if (res.ok) {
       setMessage("✅ " + data.message);
       setResult(data.content);
       setimg(`data:image/jpeg;base64,${data.image.base64}`);
       setStatus("Ankiに追加されました！");
+      setWord("");
     } else {
       setMessage("❌ " + data.error);
       setResult("");
       setStatus(`エラー: ${data.error}`);
     }
   };
+
   useEffect(() => {
     fetchTags(); // タグを取得
     fetchDecks(); // デッキ名を取得
@@ -149,13 +156,6 @@ export default function HomePage() {
         </div>
       )}
       <p>{status}</p>
-
-      {img && (
-        <div>
-          <h3 className="font-semibold mt-4">取得した画像：</h3>
-          {imageContainer({ img, word })}
-        </div>
-      )}
     </div>
   );
 }
