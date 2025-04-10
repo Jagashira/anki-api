@@ -13,6 +13,7 @@ export default function HomePage() {
   const [img, setimg] = useState<string | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   (""); // 選択されたデッキ
 
   // サーバーサイドでタグを取得する関数
@@ -62,29 +63,38 @@ export default function HomePage() {
   };
 
   const handleAddWord = async () => {
-    const res = await fetch("/api/add-note", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word, selectedTag, selectedDeck }),
-    });
-    console.log(selectedTag);
+    if (isSubmitting) return; // 二重送信防止（保険）
 
-    const data = await res.json();
+    setIsSubmitting(true); // 🔒ボタン無効化
 
-    if (data.audio?.base64) {
-      setAudioSrc(`data:audio/mp3;base64,${data.audio.base64}`);
-    }
+    try {
+      const res = await fetch("/api/add-note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word, selectedTag, selectedDeck }),
+      });
 
-    if (res.ok) {
-      setMessage("✅ " + data.message);
-      setResult(data.content);
-      setimg(`data:image/jpeg;base64,${data.image.base64}`);
-      setStatus("Ankiに追加されました！");
-      setWord("");
-    } else {
-      setMessage("❌ " + data.error);
-      setResult("");
-      setStatus(`エラー: ${data.error}`);
+      const data = await res.json();
+
+      if (data.audio?.base64) {
+        setAudioSrc(`data:audio/mp3;base64,${data.audio.base64}`);
+      }
+
+      if (res.ok) {
+        setMessage("✅ " + data.message);
+        setResult(data.content);
+        setimg(`data:image/jpeg;base64,${data.image.base64}`);
+        setStatus("Ankiに追加されました！");
+        setWord("");
+      } else {
+        setMessage("❌ " + data.error);
+        setResult("");
+        setStatus(`エラー: ${data.error}`);
+      }
+    } catch (error) {
+      setMessage("❌ エラーが発生しました");
+    } finally {
+      setIsSubmitting(false); // 🔓ボタン再有効化
     }
   };
 
@@ -130,21 +140,28 @@ export default function HomePage() {
         </form>
       </div>
 
-      <div className="">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault(); // ページリロードを防ぐ
+          handleAddWord(); // ボタンと同じ関数を呼ぶ
+        }}
+        className="mb-4"
+      >
         <input
-          className=" p-2 border rounded mb-2"
+          className="p-2 border rounded mb-2 w-full"
           placeholder="例: parse"
           value={word}
           onChange={(e) => setWord(e.target.value)}
         />
-        <div className=""></div>
-      </div>
+      </form>
 
       <button
         onClick={handleAddWord}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+        disabled={isSubmitting}
+        className={`bg-blue-600 text-white px-4 py-2 rounded w-full 
+    ${isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
       >
-        ChatGPTで生成してAnkiに追加
+        {isSubmitting ? "追加中..." : "Ankiに追加"}
       </button>
       {message && <p className="mt-4">{message}</p>}
       {result && (

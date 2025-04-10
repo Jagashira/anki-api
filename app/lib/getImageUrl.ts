@@ -1,11 +1,21 @@
 // lib/getImageUrl.ts
 export async function getImageUrl(query: string): Promise<string | null> {
-  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
-  console.log(accessKey);
+  const apiKey = process.env.PEXELS_API_KEY;
+
+  if (!apiKey) {
+    console.error("Pexels APIキーが設定されていません");
+    return null;
+  }
+
   const res = await fetch(
-    `https://api.unsplash.com/photos/random?query=${encodeURIComponent(
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(
       query
-    )}&client_id=${accessKey}`
+    )}&per_page=1`,
+    {
+      headers: {
+        Authorization: apiKey,
+      },
+    }
   );
 
   if (!res.ok) {
@@ -14,5 +24,7 @@ export async function getImageUrl(query: string): Promise<string | null> {
   }
 
   const data = await res.json();
-  return data?.urls?.small || null;
+
+  // 最初の画像のURLを取得
+  return data?.photos?.[0]?.src?.medium || null;
 }
