@@ -14,6 +14,7 @@ export default function HomePage() {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSync, setIsSync] = useState(false);
   (""); // 選択されたデッキ
 
   // サーバーサイドでタグを取得する関数
@@ -60,6 +61,18 @@ export default function HomePage() {
   const handleDeckChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDeck(e.target.value);
     console.log("test", e.target.value);
+  };
+  const handleSync = async () => {
+    if (isSubmitting) return; // 二重送信防止（保険）
+    setIsSync(true); // 🔒ボタン無効化
+
+    const res = await fetch("/api/sync", {
+      method: "POST",
+    });
+    const data = await res.json();
+    setStatus(data.result);
+    console.log(data.result);
+    setIsSync(false);
   };
 
   const handleAddWord = async () => {
@@ -163,7 +176,19 @@ export default function HomePage() {
       >
         {isSubmitting ? "追加中..." : "Ankiに追加"}
       </button>
-      {message && <p className="mt-4">{message}</p>}
+      <div className="flex">
+        <div className="w-[50%]">
+          {message && <p className="mt-4">{message}</p>}
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={isSync}
+          className={`bg-blue-600 text-white px-4 py-2 rounded w-[50%]
+    ${isSync ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
+        >
+          {isSync ? " synchronizing ..." : "synchronization"}
+        </button>
+      </div>
       {result && (
         <div className="mt-4 p-3 bg-gray-100 rounded">
           <strong>生成された内容:</strong>
