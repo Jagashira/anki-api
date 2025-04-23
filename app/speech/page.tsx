@@ -53,7 +53,7 @@ export default function SpeechPage() {
 
       const formData = new FormData();
       formData.append("audio", audioBlob, "audio.mp3"); // ← ファイル名だけ mp3 に変更
-      formData.append("audio", audioBlob, "audio.webm");
+      //formData.append("audio", audioBlob, "audio.webm");
       formData.append("duration", duration.toString());
 
       const res = await fetch("/api/whisper", {
