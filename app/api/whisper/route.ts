@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     "Date :",
     new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
   );
+
   try {
     const formData = await req.formData();
     const audioFile = formData.get("audio");
@@ -39,9 +40,28 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await audioFile.arrayBuffer());
+    const mimeType = audioFile.type;
+
+    // 拡張子をMIMEタイプから決定
+    const extensionMap: Record<string, string> = {
+      "audio/webm": "webm",
+      "audio/wav": "wav",
+      "audio/mpeg": "mp3",
+      "audio/mp4": "mp4",
+      "audio/x-m4a": "m4a",
+      "audio/mp3": "mp3",
+      "audio/ogg": "ogg",
+      "audio/oga": "oga",
+      "audio/mpga": "mpga",
+      "audio/flac": "flac",
+    };
+
+    const extension = extensionMap[mimeType] || "mp3"; // fallback
+
+    const file = new File([buffer], `audio.${extension}`, { type: mimeType });
 
     const transcription = await openai.audio.transcriptions.create({
-      file: new File([buffer], "audio.webm"),
+      file,
       model: "whisper-1",
       response_format: "json",
       language: "ja",
