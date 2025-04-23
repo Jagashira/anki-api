@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,6 +16,9 @@ import {
   PromptType,
 } from "../components/speech/PromptSelector";
 import ReactMarkdown from "react-markdown";
+import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
+import TranscriptStats from "../components/speech/TranscriptStats";
+import { TranscriptList } from "@/app/components/speech/TranscriptList";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
@@ -74,6 +77,13 @@ export default function SpeechPage() {
         const summaryData = await summaryRes.json();
         setGptUsage(summaryData.tokens); // GPTのusageを取得
         setSummary(summaryData.summary || "要約を取得できませんでした。");
+        await saveTranscriptToFirestore({
+          duration,
+          promptType,
+          customPrompt: isCuntomPrompt ? customPrompt : undefined,
+          whisperText: data.text,
+          chatGptSummary: summaryData.summary || "",
+        });
       }
     };
 
@@ -203,6 +213,11 @@ export default function SpeechPage() {
           </AccordionItem>
         </Accordion>
       )}
+      <TranscriptStats />
+      <div className="p-6">
+        <h1 className="text-xl font-bold mb-4">Transcript一覧</h1>
+        <TranscriptList />
+      </div>
     </div>
   );
 }
