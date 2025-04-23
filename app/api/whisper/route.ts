@@ -1,11 +1,21 @@
-// /api/whisper/route.ts
+// app/api/whisper/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAI } from "openai";
-import { Readable } from "stream";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*", // ← 運用ではドメインを指定推奨
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   console.log("WHISPER_API--------------------");
@@ -16,9 +26,9 @@ export async function POST(req: NextRequest) {
   );
   try {
     const formData = await req.formData();
-    const audioFile = formData.get("audio"); // Blob/File
+    const audioFile = formData.get("audio");
     const durationStr = formData.get("duration") as string;
-    const duration = parseFloat(durationStr); // ← 数値に変換
+    const duration = parseFloat(durationStr);
 
     if (!audioFile || !(audioFile instanceof Blob)) {
       console.log("音声ファイルがありません。");
@@ -30,12 +40,11 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await audioFile.arrayBuffer());
 
-    // Whisper API にリクエスト
     const transcription = await openai.audio.transcriptions.create({
       file: new File([buffer], "audio.webm"),
-      model: "whisper-1", // モデル名を確認
+      model: "whisper-1",
       response_format: "json",
-      language: "ja", // 日本語
+      language: "ja",
     });
 
     console.log("使用したmodel :", "whisper-1");
@@ -44,9 +53,24 @@ export async function POST(req: NextRequest) {
     console.log("音声ファイルのテキスト :", transcription.text);
     console.log("------------------------------");
 
-    return NextResponse.json({ text: transcription.text });
+    return NextResponse.json(
+      { text: transcription.text },
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("エラーが発生しました:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   }
 }
