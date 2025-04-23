@@ -1,4 +1,5 @@
 // components/TranscriptCard.tsx
+"use client";
 import { useState } from "react";
 import { Modal } from "./Modal"; // モーダルのインポート
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,9 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server"; // NextRequestとNextResponseをインポート
 import axios from "axios";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY; // 環境変数でAPIキーを管理
 
-export async function POST(res: NextApiResponse) {
+export async function POST(req: NextRequest) {
+  // 引数をNextRequestに変更
   try {
     const response = await axios.get("https://api.openai.com/v1/usage", {
       headers: {
@@ -11,8 +12,14 @@ export async function POST(res: NextApiResponse) {
       },
     });
     console.log("Usage data:", response.data);
-    res.status(200).json(response.data || {});
+
+    // NextResponseを使ってレスポンスを返す
+    return NextResponse.json(response.data || {}, { status: 200 });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch usage" });
+    console.error("Error fetching usage:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch usage" },
+      { status: 500 }
+    );
   }
 }

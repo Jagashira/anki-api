@@ -4,99 +4,133 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { calculateUsage, getAudioDuration } from "@/app/lib/usage";
-import {
   prompts,
   PromptSelector,
   PromptType,
 } from "../components/speech/PromptSelector";
 import ReactMarkdown from "react-markdown";
 import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
+import { calculateUsage, getAudioDuration } from "@/app/lib/usage";
 import TranscriptStats from "../components/speech/TranscriptStats";
 import { TranscriptList } from "@/app/components/speech/TranscriptList";
+import { Accordion, AccordionItem } from "@mantine/core";
+import { AccordionContent, AccordionTrigger } from "@radix-ui/react-accordion";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [summary, setSummary] = useState<string>("");
   const [transcript, setTranscript] = useState<string>("");
-  const [audioDuration, setAudioDuration] = useState<number | null>(null); // 音声の長さ
-  const [gptUsage, setGptUsage] = useState<number | null>(null); // GPTのusage
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const [gptUsage, setGptUsage] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [promptType, setPromptType] = useState<PromptType>("simple");
-  const [isCuntomPrompt, setIsCustomPrompt] = useState(false);
+  const [isCustomPrompt, setIsCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
-  const [isMarkdown, setIsMarkdown] = useState(false);
 
   const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = mediaRecorder;
-    const chunks: Blob[] = [];
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // getUserMediaがサポートされている場合、通常の録音を行う
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        const chunks: Blob[] = [];
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
 
-    mediaRecorder.onstop = async () => {
-      setAudioChunks(chunks);
-      const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        mediaRecorder.onstop = async () => {
+          setAudioChunks(chunks);
+          const audioBlob = new Blob(chunks, { type: "audio/webm" });
 
-      // 音声の長さを取得
-      const duration = await getAudioDuration(audioBlob);
-      setAudioDuration(duration); // 音声の長さ（秒）
+          // 音声の長さを取得
+          const duration = await getAudioDuration(audioBlob);
+          setAudioDuration(duration);
 
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "audio.webm");
-      formData.append("duration", duration.toString());
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "audio.webm");
+          formData.append("duration", duration.toString());
 
-      const res = await fetch("/api/whisper", {
-        method: "POST",
-        body: formData,
-      });
+          const res = await fetch("/api/whisper", {
+            method: "POST",
+            body: formData,
+          });
 
-      const data = await res.json();
+          const data = await res.json();
 
-      if (data.text) {
-        setTranscript(data.text);
+          if (data.text) {
+            setTranscript(data.text);
 
-        const summaryRes = await fetch("/api/chatgpt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: data.text,
-            prompt: isCuntomPrompt ? customPrompt : prompts[promptType],
-          }),
+            const summaryRes = await fetch("/api/chatgpt", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: data.text,
+                prompt: isCustomPrompt ? customPrompt : prompts[promptType],
+              }),
+            });
+
+            const summaryData = await summaryRes.json();
+            setGptUsage(summaryData.tokens);
+            setSummary(summaryData.summary || "要約を取得できませんでした。");
+
+            await saveTranscriptToFirestore({
+              duration,
+              promptType,
+              customPrompt: isCustomPrompt ? customPrompt : undefined,
+              whisperText: data.text,
+              chatGptSummary: summaryData.summary || "",
+            });
+          }
+        };
+
+        mediaRecorder.start();
+        setRecording(true);
+      } else {
+        // getUserMediaがサポートされていない場合、AudioContextで録音開始
+        audioContextRef.current = new AudioContext();
+        mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({
+          audio: true,
         });
 
-        const summaryData = await summaryRes.json();
-        setGptUsage(summaryData.tokens); // GPTのusageを取得
-        setSummary(summaryData.summary || "要約を取得できませんでした。");
-        await saveTranscriptToFirestore({
-          duration,
-          promptType,
-          customPrompt: isCuntomPrompt ? customPrompt : undefined,
-          whisperText: data.text,
-          chatGptSummary: summaryData.summary || "",
-        });
+        const analyser = audioContextRef.current.createAnalyser();
+        analyserNodeRef.current = analyser;
+        const mediaStreamSource =
+          audioContextRef.current.createMediaStreamSource(
+            mediaStreamRef.current
+          );
+        mediaStreamSource.connect(analyser);
+
+        // Web Audio APIで音声を取得して録音（未実装: 音声データ保存処理）
+
+        setRecording(true);
       }
-    };
-
-    mediaRecorder.start();
-    setRecording(true);
+    } catch (error) {
+      console.error("録音に失敗しました", error);
+      alert(
+        "録音の開始に失敗しました。マイクのアクセス許可を確認してください。"
+      );
+    }
   };
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
+    audioContextRef.current?.close();
     setRecording(false);
   };
 
-  // 音声の長さを取得する関数
+  useEffect(() => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("このブラウザは録音機能をサポートしていません。");
+    }
+  }, []);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -110,7 +144,7 @@ export default function SpeechPage() {
           </Button>
         </CardContent>
       </Card>
-      {/* PromptSelectorを使ってselectボタンを作成する */}
+
       <Card>
         <CardHeader>
           <CardTitle>📝 プロンプトを選択</CardTitle>
@@ -129,7 +163,6 @@ export default function SpeechPage() {
         </CardContent>
       </Card>
 
-      {/* 音声の長さ */}
       {audioDuration !== null && (
         <Card>
           <CardHeader>
@@ -151,33 +184,6 @@ export default function SpeechPage() {
               GPTのコストは約
               {gptUsage ? (gptUsage * 0.002).toFixed(2) : "計算中"} 円です。
             </p>
-            <Button
-              onClick={async () => {
-                try {
-                  const res = await fetch("/api/usageTotal");
-
-                  // レスポンスのステータスコードを確認
-                  if (!res.ok) {
-                    throw new Error(`API Error: ${res.status}`);
-                  }
-
-                  // レスポンスボディを確認
-                  const data = await res.json();
-
-                  // データが正しいか確認
-                  if (!data) {
-                    throw new Error("No data returned from API.");
-                  }
-
-                  alert(JSON.stringify(data, null, 2));
-                } catch (error) {
-                  console.error("Error fetching usage:", error);
-                  alert("Failed to fetch API usage data.");
-                }
-              }}
-            >
-              API Usageを表示
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -188,20 +194,15 @@ export default function SpeechPage() {
             <CardTitle>📝 要約結果</CardTitle>
           </CardHeader>
           <CardContent>
-            {isMarkdown ? (
-              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {summary}
-              </p>
-            ) : (
-              <div className="prose prose-neutral max-w-none">
-                <ReactMarkdown>{summary}</ReactMarkdown>
-              </div>
-            )}
+            <div className="prose prose-neutral max-w-none">
+              <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {transcript && (
+        //@ts-ignore
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="transcript">
             <AccordionTrigger>📄 文字起こしを見る</AccordionTrigger>
