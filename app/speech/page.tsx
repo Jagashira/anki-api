@@ -1,179 +1,80 @@
 "use client";
-import Head from "next/head";
-import { useState, useEffect } from "react";
-import { Button, Container, Center, Text, Loader, Alert } from "@mantine/core";
-import AudioRecorder from "./../components/Record"; // 新しい自作モジュール
+import React, { useState, useRef } from "react";
 
-import { IconRobot, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
+export default function SpeechPage() {
+  const [recording, setRecording] = useState(false);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [summary, setSummary] = useState<string>(""); // 要約結果を保存するstate
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-interface MessageSchema {
-  role: "assistant" | "user" | "system";
-  content: string;
-}
+  // 録音開始
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    const chunks: Blob[] = [];
 
-export default function Home() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [messagesArray, setMessagesArray] = useState<MessageSchema[]>([
-    {
-      role: "system",
-      content:
-        "You are an AI assistant helping create meeting minutes using ChatGPT and Whisper API.",
-    },
-  ]);
-
-  useEffect(() => {
-    if (
-      messagesArray.length > 1 &&
-      messagesArray[messagesArray.length - 1].role !== "system"
-    ) {
-      gptRequest();
-    }
-  }, [messagesArray]);
-
-  const gptRequest = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/chatgpt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages: messagesArray }),
-      });
-
-      const gptResponse = await response.json();
-      setLoading(false);
-      if (gptResponse.content) {
-        setMessagesArray((prevState) => [...prevState, gptResponse]);
-      } else {
-        setError("No response returned from GPT.");
-      }
-    } catch (error) {
-      setLoading(false);
-      setError("Failed to communicate with GPT.");
-    }
-  };
-
-  const updateMessagesArray = (newMessage: string) => {
-    const newMessageSchema: MessageSchema = {
-      role: "user",
-      content: newMessage,
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
     };
-    setMessagesArray((prevState) => [...prevState, newMessageSchema]);
-  };
 
-  const whisperRequest = async (audioBlob: Blob) => {
-    setLoading(true);
-    setError(null);
-    const formData = new FormData();
-    formData.append("file", audioBlob, "audio.wav");
-    try {
-      const response = await fetch("/api/whisper", {
+    mediaRecorder.onstop = async () => {
+      setAudioChunks(chunks);
+      const audioBlob = new Blob(chunks, { type: "audio/webm" });
+
+      // Whisper API に送信
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "audio.webm");
+
+      const res = await fetch("/api/whisper", {
         method: "POST",
         body: formData,
       });
-      const { text, error } = await response.json();
-      if (response.ok) {
-        updateMessagesArray(text);
-      } else {
-        setLoading(false);
-        setError(error.message);
+
+      const data = await res.json();
+
+      // Whisper結果を受け取ったら、ChatGPT API に送信して要約を生成
+      if (data.text) {
+        const summaryRes = await fetch("/api/chatgpt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: data.text }),
+        });
+
+        const summaryData = await summaryRes.json();
+        setSummary(summaryData.summary || "要約を取得できませんでした。");
       }
-    } catch (error) {
-      setLoading(false);
-      setError("Error processing audio.");
-    }
+    };
+
+    mediaRecorder.start();
+    setRecording(true);
+  };
+
+  // 録音停止
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
   };
 
   return (
-    <>
-      <Head>
-        <title>Real-time Meeting Minutes with ChatGPT + Whisper</title>
-      </Head>
-      <Container size="sm" mt={25}>
-        <Center>
-          <IconRobot size={30} color="teal" />
-          <Text
-            //@ts-ignore
-            size={30}
-            weight={300}
-            variant="gradient"
-            gradient={{ from: "blue", to: "teal" }}
-          >
-            Meeting Minutes Bot
-          </Text>
-        </Center>
+    <div className="p-4">
+      <h1 className="text-xl mb-4">リアルタイム録音</h1>
+      <button
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+        onClick={recording ? stopRecording : startRecording}
+      >
+        {recording ? "録音停止" : "録音開始"}
+      </button>
 
-        {error && (
-          <Alert icon={<IconAlertCircle />} title="Error!" color="red">
-            {error}
-          </Alert>
-        )}
-
-        <div>
-          {messagesArray.length > 1 &&
-            messagesArray.map((message, index) => (
-              <div key={index}>
-                <Text>
-                  {message.role === "user" ? "User: " : "Assistant: "}{" "}
-                  {message.content}
-                </Text>
-              </div>
-            ))}
+      {/* 要約結果の表示 */}
+      {summary && (
+        <div className="mt-4">
+          <h2 className="text-lg">要約結果</h2>
+          <p>{summary}</p>
         </div>
-
-        <Center mt={40}>
-          {!loading ? (
-            <AudioRecorder onComplete={(blob) => whisperRequest(blob)} />
-          ) : (
-            <Loader />
-          )}
-
-          {!loading && (
-            <Button
-              variant="light"
-              color="red"
-              radius="lg"
-              leftSection={<IconRefresh />}
-              ml="md"
-              onClick={() =>
-                setMessagesArray([
-                  {
-                    role: "system",
-                    content:
-                      "You are an AI assistant helping create meeting minutes using ChatGPT and Whisper API.",
-                  },
-                ])
-              }
-            >
-              Reset
-            </Button>
-          )}
-        </Center>
-
-        {!loading && (
-          <Button
-            variant="gradient"
-            radius={100}
-            w={40}
-            m={20}
-            p={0}
-            onClick={() =>
-              setMessagesArray([
-                {
-                  role: "system",
-                  content:
-                    "You are an AI assistant helping create meeting minutes using ChatGPT and Whisper API.",
-                },
-              ])
-            }
-          >
-            <IconRefresh size={25} />
-          </Button>
-        )}
-      </Container>
-    </>
+      )}
+    </div>
   );
 }

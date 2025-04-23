@@ -1,35 +1,43 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+// /api/chatgpt/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { OpenAI } from "openai";
 
-interface MessageSchema {
-  role: "assistant" | "user" | "system";
-  content: string;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+export async function POST(req: NextRequest) {
+  const { text } = await req.json();
+
+  if (!text) {
+    return NextResponse.json(
+      { error: "テキストが送信されていません。" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // ChatGPTに要約を依頼
+    const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: req.body.messages,
-    }),
-  });
+      messages: [
+        {
+          role: "system",
+          content:
+            "あなたは議事録作成の専門家です。以下の会話内容を簡潔に要約してください。",
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+    });
 
-  const { choices, error } = await response.json();
-  if (response.ok) {
-    const message = choices[0]?.message?.content;
-    if (message) {
-      res.status(200).json({ role: "system", content: message });
-    } else {
-      res.status(500).send("No message from OpenAI.");
-    }
-  } else {
-    res.status(500).json({ error });
+    const summary = response.choices[0]?.message?.content;
+
+    return NextResponse.json({ summary });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

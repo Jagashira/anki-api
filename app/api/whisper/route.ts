@@ -1,39 +1,40 @@
-import { withFileUpload } from "next-multiparty";
-import { createReadStream } from "fs";
-const FormData = require("form-data");
+// /api/whisper/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { OpenAI } from "openai";
+import { Readable } from "stream";
 
-export const config = {
-  api: { bodyParser: false },
-};
-
-export default withFileUpload(async (req, res) => {
-  const file = req.file;
-  if (!file) {
-    res.status(400).send("No file uploaded");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", createReadStream(file.filepath), "audio.wav");
-  formData.append("model", "whisper-1");
-
-  const response = await fetch(
-    "https://api.openai.com/v1/audio/transcriptions",
-    {
-      method: "POST",
-      headers: {
-        ...formData.getHeaders(),
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: formData,
-    }
-  );
-
-  const data = await response.json();
-  if (response.ok) {
-    res.status(200).json({ text: data.text });
-  } else {
-    console.error(data);
-    res.status(400).json({ error: data });
-  }
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_SPEECH_KEY,
 });
+
+export async function POST(req: NextRequest) {
+  try {
+    const formData = await req.formData();
+    const audioFile = formData.get("audio");
+
+    if (!audioFile || !(audioFile instanceof Blob)) {
+      console.log("音声ファイルがありません。");
+      return NextResponse.json(
+        { error: "音声ファイルがありません。" },
+        { status: 400 }
+      );
+    }
+
+    const buffer = Buffer.from(await audioFile.arrayBuffer());
+
+    // Whisper API にリクエスト
+    const transcription = await openai.audio.transcriptions.create({
+      file: new File([buffer], "audio.webm"),
+      model: "whisper-1", // モデル名を確認
+      response_format: "json",
+      language: "ja", // 日本語
+    });
+
+    console.log("Whisper APIからの応答:", transcription);
+
+    return NextResponse.json({ text: transcription.text });
+  } catch (error: any) {
+    console.error("エラーが発生しました:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
