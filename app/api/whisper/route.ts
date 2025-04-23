@@ -1,16 +1,25 @@
 // app/api/whisper/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAI } from "openai";
+import ffmpegPath from "@ffmpeg-installer/ffmpeg";
+import ffmpeg from "fluent-ffmpeg";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { v4 as uuidv4 } from "uuid";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ffmpeg パスを設定
+ffmpeg.setFfmpegPath(ffmpegPath.path);
+
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*", // ← 運用ではドメインを指定推奨
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     },
@@ -20,46 +29,40 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   console.log("WHISPER_API--------------------");
   console.log("音声ファイルを受信しました。");
-  console.log(
-    "Date :",
-    new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-  );
 
   try {
     const formData = await req.formData();
-    const audioFile = formData.get("audio");
+    const audioFile = formData.get("audio") as Blob;
     const durationStr = formData.get("duration") as string;
-    const duration = parseFloat(durationStr);
+    const duration = parseFloat(durationStr || "0");
 
     if (!audioFile || !(audioFile instanceof Blob)) {
-      console.log("音声ファイルがありません。");
       return NextResponse.json(
         { error: "音声ファイルがありません。" },
         { status: 400 }
       );
     }
 
+    // 一時ファイル保存
     const buffer = Buffer.from(await audioFile.arrayBuffer());
     const mimeType = audioFile.type;
+    const inputExt = mimeType.split("/")[1] || "webm";
+    const tempInputPath = path.join(os.tmpdir(), `${uuidv4()}.${inputExt}`);
+    const tempOutputPath = path.join(os.tmpdir(), `${uuidv4()}.mp3`);
+    fs.writeFileSync(tempInputPath, buffer);
 
-    // 拡張子をMIMEタイプから決定
-    const extensionMap: Record<string, string> = {
-      "audio/webm": "webm",
-      "audio/wav": "wav",
-      "audio/mpeg": "mp3",
-      "audio/mp4": "mp4",
-      "audio/x-m4a": "m4a",
-      "audio/mp3": "mp3",
-      "audio/ogg": "ogg",
-      "audio/oga": "oga",
-      "audio/mpga": "mpga",
-      "audio/flac": "flac",
-    };
+    // ffmpeg で mp3 に変換
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .toFormat("mp3")
+        .on("end", () => resolve())
+        .on("error", reject)
+        .save(tempOutputPath);
+    });
 
-    const extension = extensionMap[mimeType] || "mp3"; // fallback
+    const file = fs.createReadStream(tempOutputPath);
 
-    const file = new File([buffer], `audio.${extension}`, { type: mimeType });
-
+    // Whisper API で文字起こし
     const transcription = await openai.audio.transcriptions.create({
       file,
       model: "whisper-1",
@@ -67,29 +70,25 @@ export async function POST(req: NextRequest) {
       language: "ja",
     });
 
-    console.log("使用したmodel :", "whisper-1");
     console.log("音声ファイルの長さ :", duration, "秒");
-    console.log("音声ファイルのサイズ :", buffer.length, "バイト");
     console.log("音声ファイルのテキスト :", transcription.text);
     console.log("------------------------------");
 
+    // 一時ファイル削除
+    fs.unlinkSync(tempInputPath);
+    fs.unlinkSync(tempOutputPath);
+
     return NextResponse.json(
       { text: transcription.text },
-      {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
+      { headers: { "Access-Control-Allow-Origin": "*" } }
     );
   } catch (error: any) {
     console.error("エラーが発生しました:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "変換・文字起こしに失敗しました。" },
       {
         status: 500,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
+        headers: { "Access-Control-Allow-Origin": "*" },
       }
     );
   }
