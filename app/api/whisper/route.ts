@@ -1,4 +1,3 @@
-// app/api/whisper/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAI } from "openai";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
@@ -29,6 +28,9 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   console.log("WHISPER_API--------------------");
   console.log("音声ファイルを受信しました。");
+  let tempInputPath = "";
+  let tempOutputPath = "";
+  // CORS ヘッダーを追加
 
   try {
     const formData = await req.formData();
@@ -47,8 +49,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await audioFile.arrayBuffer());
     const mimeType = audioFile.type;
     const inputExt = mimeType.split("/")[1] || "webm";
-    const tempInputPath = path.join(os.tmpdir(), `${uuidv4()}.${inputExt}`);
-    const tempOutputPath = path.join(os.tmpdir(), `${uuidv4()}.mp3`);
+    tempInputPath = path.join(os.tmpdir(), `${uuidv4()}.${inputExt}`);
+    tempOutputPath = path.join(os.tmpdir(), `${uuidv4()}.mp3`);
     fs.writeFileSync(tempInputPath, buffer);
 
     // ffmpeg で mp3 に変換
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
         .save(tempOutputPath);
     });
 
+    // mp3ファイルを読み込み
     const file = fs.createReadStream(tempOutputPath);
 
     // Whisper API で文字起こし
@@ -91,5 +94,13 @@ export async function POST(req: NextRequest) {
         headers: { "Access-Control-Allow-Origin": "*" },
       }
     );
+  } finally {
+    // 最後にファイル削除を確実に行う
+    if (fs.existsSync(tempInputPath)) {
+      fs.unlinkSync(tempInputPath);
+    }
+    if (fs.existsSync(tempOutputPath)) {
+      fs.unlinkSync(tempOutputPath);
+    }
   }
 }
