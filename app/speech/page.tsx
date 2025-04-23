@@ -9,12 +9,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { calculateUsage, getAudioDuration } from "@/app/lib/usage"; // 音声の長さを取得する関数をインポート
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [summary, setSummary] = useState<string>("");
   const [transcript, setTranscript] = useState<string>("");
+  const [audioDuration, setAudioDuration] = useState<number | null>(null); // 音声の長さ
+  const [gptUsage, setGptUsage] = useState<number | null>(null); // GPTのusage
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const startRecording = async () => {
@@ -30,6 +33,10 @@ export default function SpeechPage() {
     mediaRecorder.onstop = async () => {
       setAudioChunks(chunks);
       const audioBlob = new Blob(chunks, { type: "audio/webm" });
+
+      // 音声の長さを取得
+      const duration = await getAudioDuration(audioBlob);
+      setAudioDuration(duration); // 音声の長さ（秒）
 
       const formData = new FormData();
       formData.append("audio", audioBlob, "audio.webm");
@@ -51,6 +58,7 @@ export default function SpeechPage() {
         });
 
         const summaryData = await summaryRes.json();
+        setGptUsage(summaryData.tokens); // GPTのusageを取得
         setSummary(summaryData.summary || "要約を取得できませんでした。");
       }
     };
@@ -64,6 +72,8 @@ export default function SpeechPage() {
     setRecording(false);
   };
 
+  // 音声の長さを取得する関数
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <Card>
@@ -76,6 +86,32 @@ export default function SpeechPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* 音声の長さ */}
+      {audioDuration !== null && (
+        <Card>
+          <CardHeader>
+            <CardTitle>🔊 音声の長さ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-800">
+              録音された音声の長さは {audioDuration.toFixed(2)} 秒です。
+            </p>
+
+            <p className="text-gray-800">
+              Whisperのコストは約
+              {calculateUsage(
+                Number(audioDuration.toFixed(2)) * 142.044
+              ).toFixed(2)}{" "}
+              円 です。
+            </p>
+            <p className="text-gray-800">
+              GPTのコストは約
+              {gptUsage ? (gptUsage * 0.002).toFixed(2) : "計算中"} 円です。
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {summary && (
         <Card>

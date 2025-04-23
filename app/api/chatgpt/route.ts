@@ -34,8 +34,10 @@ export async function POST(req: NextRequest) {
     });
 
     const summary = response.choices[0]?.message?.content;
+    const tokens = response.usage?.total_tokens || 0;
+    console.log("ChatGPT APIからの応答:", response);
 
-    return NextResponse.json({ summary });
+    return NextResponse.json({ summary, tokens });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
