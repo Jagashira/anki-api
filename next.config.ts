@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
         fs: "empty", // 'fs' モジュールに依存する場合、この設定を追加
       };
     }
-
+    config.module.rules.push({
+      test: /\.md$/,
+      use: "ignore-loader", // .md ファイルを無視
+    });
     return config;
   },
   api: {
