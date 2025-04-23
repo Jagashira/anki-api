@@ -1,41 +1,57 @@
 // /api/chatgpt/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { OpenAI } from "openai";
+import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: OPENAI_API_KEY,
 });
 
 export async function POST(req: NextRequest) {
-  const { text } = await req.json();
+  console.log("CHATGPT_API--------------------");
+  console.log("テキストを受信しました。");
+  console.log(
+    "Date :",
+    new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+  );
+  const { text, prompt } = await req.json();
 
-  if (!text) {
+  if (!text || !prompt) {
     return NextResponse.json(
-      { error: "テキストが送信されていません。" },
+      { error: "Missing 'text' or 'prompt'" },
       { status: 400 }
     );
   }
+  const messages: ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content: prompt,
+    },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
 
   try {
     // ChatGPTに要約を依頼
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "あなたは議事録作成の専門家です。以下の会話内容を簡潔に要約してください。",
-        },
-        {
-          role: "user",
-          content: text,
-        },
-      ],
+      messages,
     });
+
+    //使用したmodelやrole,contentを出力
+
+    console.log("使用したmodel :", response.model);
+    console.log("text in GPT  :", text);
+    console.log("prompt in GPT:", prompt);
+    console.log("message      :", response.choices[0]?.message?.content);
+    console.log("------------------------------");
 
     const summary = response.choices[0]?.message?.content;
     const tokens = response.usage?.total_tokens || 0;
-    console.log("ChatGPT APIからの応答:", response);
 
     return NextResponse.json({ summary, tokens });
   } catch (error: any) {
