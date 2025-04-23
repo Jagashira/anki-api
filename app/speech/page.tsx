@@ -52,6 +52,7 @@ export default function SpeechPage() {
       setAudioDuration(duration); // 音声の長さ（秒）
 
       const formData = new FormData();
+      formData.append("audio", audioBlob, "audio.mp3"); // ← ファイル名だけ mp3 に変更
       formData.append("audio", audioBlob, "audio.webm");
       formData.append("duration", duration.toString());
 

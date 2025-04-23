@@ -24,12 +24,10 @@ export async function POST(req: NextRequest) {
     "Date :",
     new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
   );
-  const formData = await req.formData();
-  const audioFile = formData.get("audio");
-  //@ts-ignore
-  console.log("audioFile.type:", audioFile.type);
 
   try {
+    const formData = await req.formData();
+    const audioFile = formData.get("audio");
     const durationStr = formData.get("duration") as string;
     const duration = parseFloat(durationStr);
 
