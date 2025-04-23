@@ -4,10 +4,11 @@ import React, { useState, useRef } from "react";
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [summary, setSummary] = useState<string>(""); // 要約結果を保存するstate
+  const [summary, setSummary] = useState<string>("");
+  const [transcript, setTranscript] = useState<string>(""); // ← 追加
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState<boolean>(false); // ← 折りたたみ制御
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-  // 録音開始
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mediaRecorder = new MediaRecorder(stream);
@@ -22,7 +23,6 @@ export default function SpeechPage() {
       setAudioChunks(chunks);
       const audioBlob = new Blob(chunks, { type: "audio/webm" });
 
-      // Whisper API に送信
       const formData = new FormData();
       formData.append("audio", audioBlob, "audio.webm");
 
@@ -33,13 +33,11 @@ export default function SpeechPage() {
 
       const data = await res.json();
 
-      // Whisper結果を受け取ったら、ChatGPT API に送信して要約を生成
       if (data.text) {
+        setTranscript(data.text); // ← Whisper結果を保存
         const summaryRes = await fetch("/api/chatgpt", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: data.text }),
         });
 
@@ -52,7 +50,6 @@ export default function SpeechPage() {
     setRecording(true);
   };
 
-  // 録音停止
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
     setRecording(false);
@@ -70,9 +67,28 @@ export default function SpeechPage() {
 
       {/* 要約結果の表示 */}
       {summary && (
-        <div className="mt-4">
-          <h2 className="text-lg">要約結果</h2>
-          <p>{summary}</p>
+        <div className="mt-6">
+          <h2 className="text-lg font-bold mb-2">要約結果</h2>
+          <p className="bg-gray-100 p-3 rounded">{summary}</p>
+        </div>
+      )}
+
+      {/* 文字起こし（transcribe）の表示：折りたたみ式 */}
+      {transcript && (
+        <div className="mt-6">
+          <button
+            className="text-blue-600 underline"
+            onClick={() => setIsTranscriptOpen(!isTranscriptOpen)}
+          >
+            {isTranscriptOpen
+              ? "▲ 文字起こしを折りたたむ"
+              : "▼ 文字起こしを見る"}
+          </button>
+          {isTranscriptOpen && (
+            <div className="mt-2 bg-gray-50 p-3 rounded whitespace-pre-wrap text-sm max-h-96 overflow-y-auto">
+              {transcript}
+            </div>
+          )}
         </div>
       )}
     </div>
