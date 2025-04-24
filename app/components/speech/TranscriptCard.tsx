@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { Modal } from "./Modal"; // モーダルのインポート
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-type Transcript = {
-  chatGptSummary: string;
-  createdAt: { seconds: number };
-};
+import { Transcript } from "./TranscriptList";
 
 export const TranscriptCard = ({ item }: { item: Transcript }) => {
   const [isModalOpen, setIsModalOpen] = useState(false); // モーダルの開閉状態
@@ -43,6 +39,7 @@ export const TranscriptCard = ({ item }: { item: Transcript }) => {
         title="要約詳細"
         content={item.chatGptSummary} // 詳細内容を渡す
         date={formattedDate}
+        isMarkdown={item.promptType}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-// components/ui/Modal.tsx
+// components/speech/Modal.tsx
 "use client";
 import {
   Dialog,
@@ -9,8 +9,15 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
-import { PDFDownloadLink } from "@react-pdf/renderer";
 import { TranscriptPDF } from "./TranscriptPDF"; // 先ほど作ったPDFコンポーネントをインポート
+import { PromptType } from "./PromptSelector";
+import dynamic from "next/dynamic";
+
+// PDFDownloadLinkの動的インポート
+const PDFDownloadLink = dynamic(
+  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
+  { ssr: false }
+) as React.ComponentType<any>; // 型アサーションを追加
 
 type ModalProps = {
   isOpen: boolean;
@@ -18,6 +25,7 @@ type ModalProps = {
   title: string;
   content: string;
   date: string;
+  isMarkdown: PromptType;
 };
 
 export const Modal = ({
@@ -26,6 +34,7 @@ export const Modal = ({
   title,
   content,
   date,
+  isMarkdown,
 }: ModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -45,7 +54,13 @@ export const Modal = ({
         {/* ✅ PDFダウンロードリンク */}
         <div className="mt-4">
           <PDFDownloadLink
-            document={<TranscriptPDF content={content} date={date} />}
+            document={
+              <TranscriptPDF
+                content={content}
+                date={date}
+                isMarkdown={isMarkdown === "markdown"}
+              />
+            }
             fileName="transcript.pdf"
             className="inline-block bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
           >

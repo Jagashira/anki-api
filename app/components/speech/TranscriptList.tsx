@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { db } from "@/app/lib/firebase"; // Firestoreのインポート
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { TranscriptCard } from "./TranscriptCard";
+import { PromptType } from "./PromptSelector";
 
-type Transcript = {
+export type Transcript = {
   chatGptSummary: string;
   createdAt: { seconds: number };
+  promptType: PromptType;
 };
 
 export const TranscriptList = () => {
@@ -26,6 +28,7 @@ export const TranscriptList = () => {
           return {
             chatGptSummary: docData.chatGptSummary || "", // chatGptSummaryがあるかチェックしてから追加
             createdAt: docData.createdAt,
+            promptType: docData.promptType,
           };
         });
         setTranscripts(data);
