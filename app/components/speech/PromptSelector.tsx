@@ -36,7 +36,7 @@ interface PromptSelectorProps {
   setPromptType: (value: PromptType) => void;
   customPrompt: string;
   setCustomPrompt: (value: string) => void;
-  setIsCustomPrompt: (value: false) => void;
+  setIsCustomPrompt: (value: boolean) => void;
 }
 
 export const prompts: Record<PromptType, string> = {

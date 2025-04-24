@@ -20,6 +20,7 @@ import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
 import TranscriptStats from "../components/speech/TranscriptStats";
 import { TranscriptList } from "@/app/components/speech/TranscriptList";
 import RecordingPromptPanel from "../components/speech/RecordingPromptPanel";
+import { SummaryResultCard } from "../components/speech/SummaryResultCard";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
@@ -102,34 +103,6 @@ export default function SpeechPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">リアルタイム録音</CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-4">
-          <Button onClick={recording ? stopRecording : startRecording}>
-            {recording ? "⏹ 録音停止" : "🎙 録音開始"}
-          </Button>
-        </CardContent>
-      </Card>
-      {/* PromptSelectorを使ってselectボタンを作成する */}
-      <Card>
-        <CardHeader>
-          <CardTitle>📝 プロンプトを選択</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-800">
-            録音した音声を要約するためのプロンプトを選択してください。
-          </p>
-          <PromptSelector
-            promptType={promptType}
-            setPromptType={setPromptType}
-            customPrompt={customPrompt}
-            setCustomPrompt={setCustomPrompt}
-            setIsCustomPrompt={setIsCustomPrompt}
-          />
-        </CardContent>
-      </Card>
       <RecordingPromptPanel
         promptType={promptType}
         setPromptType={setPromptType}
@@ -141,7 +114,6 @@ export default function SpeechPage() {
         recording={recording}
       />
 
-      {/* 音声の長さ */}
       {audioDuration !== null && (
         <Card>
           <CardHeader>
@@ -194,24 +166,7 @@ export default function SpeechPage() {
         </Card>
       )}
 
-      {summary && (
-        <Card>
-          <CardHeader>
-            <CardTitle>📝 要約結果</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isMarkdown ? (
-              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {summary}
-              </p>
-            ) : (
-              <div className="prose prose-neutral max-w-none">
-                <ReactMarkdown>{summary}</ReactMarkdown>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <SummaryResultCard summary={summary} isMarkdown={isMarkdown} />
 
       {transcript && (
         <Accordion type="single" collapsible className="w-full">
