@@ -44,11 +44,17 @@ export const TranscriptList = () => {
   }
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="flex gap-x-4 p-4 min-w-max">
-        {transcripts.map((item, index) => (
-          <TranscriptCard key={index} item={item} />
-        ))}
+    <div>
+      <div>
+        <h2 className="text-2xl">Transcription 一覧</h2>
+      </div>
+
+      <div className="w-full overflow-x-auto">
+        <div className="flex gap-x-4 p-4 min-w-max">
+          {transcripts.map((item, index) => (
+            <TranscriptCard key={index} item={item} />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -20,7 +20,9 @@ import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
 import TranscriptStats from "../components/speech/TranscriptStats";
 import { TranscriptList } from "@/app/components/speech/TranscriptList";
 import RecordingPromptPanel from "../components/speech/RecordingPromptPanel";
-import { SummaryResultCard } from "../components/speech/SummaryResultCard";
+import { SummaryDisplay } from "../components/speech/SummaryDisplay";
+import GraphSelector from "../components/speech/GraphSelector";
+import GraphDisplay from "../components/speech/GraphDisplay";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
@@ -34,6 +36,9 @@ export default function SpeechPage() {
   const [isCuntomPrompt, setIsCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isMarkdown, setIsMarkdown] = useState(false);
+  const [graphType, setGraphType] = useState<
+    "tokens" | "apiUsage" | "responseTime"
+  >("tokens");
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -114,78 +119,16 @@ export default function SpeechPage() {
         recording={recording}
       />
 
-      {audioDuration !== null && (
-        <Card>
-          <CardHeader>
-            <CardTitle>🔊 音声の長さ</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-800">
-              録音された音声の長さは {audioDuration.toFixed(2)} 秒です。
-            </p>
+      <SummaryDisplay
+        summary={summary}
+        transcript={transcript}
+        isMarkdown={promptType === "markdown"} // ← 条件に応じて切替
+      />
+      <TranscriptList />
 
-            <p className="text-gray-800">
-              Whisperのコストは約
-              {calculateUsage(
-                Number(audioDuration.toFixed(2)) * 142.044
-              ).toFixed(2)}{" "}
-              円 です。
-            </p>
-            <p className="text-gray-800">
-              GPTのコストは約
-              {gptUsage ? (gptUsage * 0.002).toFixed(2) : "計算中"} 円です。
-            </p>
-            <Button
-              onClick={async () => {
-                try {
-                  const res = await fetch("/api/usageTotal");
-
-                  // レスポンスのステータスコードを確認
-                  if (!res.ok) {
-                    throw new Error(`API Error: ${res.status}`);
-                  }
-
-                  // レスポンスボディを確認
-                  const data = await res.json();
-
-                  // データが正しいか確認
-                  if (!data) {
-                    throw new Error("No data returned from API.");
-                  }
-
-                  alert(JSON.stringify(data, null, 2));
-                } catch (error) {
-                  console.error("Error fetching usage:", error);
-                  alert("Failed to fetch API usage data.");
-                }
-              }}
-            >
-              API Usageを表示
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <SummaryResultCard summary={summary} isMarkdown={isMarkdown} />
-
-      {transcript && (
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="transcript">
-            <AccordionTrigger>📄 文字起こしを見る</AccordionTrigger>
-            <AccordionContent>
-              <div className="bg-gray-50 p-4 rounded-md text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {transcript}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
-
-      <div className="p-6">
-        <h1 className="text-xl font-bold mb-4">Transcript一覧</h1>
-        <TranscriptList />
+      <div>
+        <GraphDisplay />
       </div>
-      <TranscriptStats />
     </div>
   );
 }
