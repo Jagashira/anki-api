@@ -42,6 +42,7 @@ export const TranscriptCard = ({ item }: { item: Transcript }) => {
         onClose={() => setIsModalOpen(false)} // モーダルを閉じる
         title="要約詳細"
         content={item.chatGptSummary} // 詳細内容を渡す
+        date={formattedDate}
       />
     </div>
   );
