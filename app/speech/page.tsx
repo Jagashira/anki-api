@@ -19,6 +19,7 @@ import ReactMarkdown from "react-markdown";
 import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
 import TranscriptStats from "../components/speech/TranscriptStats";
 import { TranscriptList } from "@/app/components/speech/TranscriptList";
+import RecordingPromptPanel from "../components/speech/RecordingPromptPanel";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);
@@ -129,6 +130,16 @@ export default function SpeechPage() {
           />
         </CardContent>
       </Card>
+      <RecordingPromptPanel
+        promptType={promptType}
+        setPromptType={setPromptType}
+        customPrompt={customPrompt}
+        setCustomPrompt={setCustomPrompt}
+        setIsCustomPrompt={setIsCustomPrompt}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+        recording={recording}
+      />
 
       {/* 音声の長さ */}
       {audioDuration !== null && (
@@ -214,11 +225,12 @@ export default function SpeechPage() {
           </AccordionItem>
         </Accordion>
       )}
-      <TranscriptStats />
+
       <div className="p-6">
         <h1 className="text-xl font-bold mb-4">Transcript一覧</h1>
         <TranscriptList />
       </div>
+      <TranscriptStats />
     </div>
   );
 }

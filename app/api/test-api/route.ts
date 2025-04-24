@@ -1,62 +1,103 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createReadStream } from "fs";
-import { writeFile, unlink } from "fs/promises";
+// /pages/api/test-api.ts
+
+import fs from "fs";
 import path from "path";
+import os from "os";
 import { v4 as uuidv4 } from "uuid";
-import formidable from "formidable";
+import ffmpeg from "fluent-ffmpeg";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
+// OpenAIのAPIキーを使ってOpenAIインスタンスを作成
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(req: NextRequest) {
-  const form = formidable({ multiples: false });
+// 音声ファイルをWebMまたはMP3に変換する関数
+const convertAudioFile = async (
+  audioFile: Blob
+): Promise<{ webmPath: string; mp3Path: string }> => {
+  const buffer = Buffer.from(await audioFile.arrayBuffer());
+  const mimeType = audioFile.type;
+  const inputExt = mimeType.includes("webm") ? "webm" : "mp3"; // webmならwebm、それ以外はmp3
+  const tempInputPath = path.join(os.tmpdir(), `${uuidv4()}.${inputExt}`);
+  const tempOutputPath = path.join(os.tmpdir(), `${uuidv4()}.mp3`);
 
-  const { fields, files }: any = await new Promise((resolve, reject) => {
-    form.parse(req as any, (err, fields, files) => {
-      if (err) reject(err);
-      else resolve({ fields, files });
+  // 一時ファイルとして保存
+  fs.writeFileSync(tempInputPath, buffer);
+
+  // webmならmp3に変換
+  if (inputExt === "webm") {
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .toFormat("mp3")
+        .on("end", () => resolve())
+        .on("error", reject)
+        .save(tempOutputPath);
     });
-  });
-
-  const file = files.audio;
-  if (!file) {
-    return NextResponse.json(
-      { error: "Audio file is required." },
-      { status: 400 }
-    );
+  } else {
+    // mp3や他の形式はそのまま使用
+    fs.writeFileSync(tempOutputPath, buffer);
   }
 
-  const filePath = file[0].filepath || file[0].path;
-  const fileName = `${uuidv4()}.mp3`;
-  const newPath = path.join("/tmp", fileName);
+  // webmとmp3のファイルパスを返す
+  return { webmPath: tempInputPath, mp3Path: tempOutputPath };
+};
 
-  // Move file to /tmp if not already there
-  await writeFile(newPath, createReadStream(filePath));
+// 変換された音声ファイル（WebMとMP3）を保存してURLを返す関数
+const saveAudioFiles = async (
+  audioBlob: Blob
+): Promise<{ webmUrl: string; mp3Url: string }> => {
+  const webmPath = path.join(os.tmpdir(), `${uuidv4()}.webm`);
+  const mp3Path = path.join(os.tmpdir(), `${uuidv4()}.mp3`);
 
-  try {
-    const transcription = await openai.audio.transcriptions.create({
-      file: createReadStream(newPath),
-      model: "whisper-1",
-      response_format: "json",
-      language: "ja", // 日本語を指定
-    });
+  // BlobをWebMファイルとして保存
+  fs.writeFileSync(webmPath, Buffer.from(await audioBlob.arrayBuffer()));
 
-    await unlink(newPath); // クリーンアップ
+  // WebMをMP3に変換
+  await new Promise<void>((resolve, reject) => {
+    ffmpeg(webmPath)
+      .toFormat("mp3")
+      .on("end", () => resolve())
+      .on("error", reject)
+      .save(mp3Path);
+  });
 
-    return NextResponse.json({ text: transcription.text });
-  } catch (err: any) {
-    console.error("Whisper error:", err);
-    return NextResponse.json(
-      { error: "Transcription failed." },
-      { status: 500 }
-    );
+  // WebMとMP3のURLを返す（例: 静的ファイルサーバーで公開）
+  const webmUrl = `http://localhost:3000/audio/${path.basename(webmPath)}`;
+  const mp3Url = `http://localhost:3000/audio/${path.basename(mp3Path)}`;
+
+  return { webmUrl, mp3Url };
+};
+
+// Next.js APIハンドラ
+export default async function handler(req: NextRequest) {
+  if (req.method === "POST") {
+    try {
+      // リクエストの内容を取得
+      //@ts-ignore
+      const audioBlob = req.body.audio;
+      //@ts-ignore
+      const duration = req.body.duration;
+
+      // 音声ファイルの保存と変換
+      const { webmUrl, mp3Url } = await saveAudioFiles(audioBlob);
+
+      // 変換後のファイルURLを返す
+      return NextResponse.json({
+        message: "音声ファイルが処理されました",
+        webmUrl,
+        mp3Url,
+      });
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      return NextResponse.json(
+        { error: "音声ファイルの処理中にエラーが発生しました" },
+        { status: 500 }
+      );
+    }
+  } else {
+    // POST以外のメソッドに対してエラーレスポンス
+    return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
   }
 }
