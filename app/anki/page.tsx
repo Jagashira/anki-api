@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import imageContainer from "@/app/lib/imageContainer";
 
 export default function HomePage() {
   const [word, setWord] = useState("");

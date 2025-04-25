@@ -9,20 +9,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { calculateUsage, getAudioDuration } from "@/app/lib/usage";
+import { calculateUsage, getAudioDuration } from "@/lib/usage";
 import {
   prompts,
   PromptSelector,
   PromptType,
-} from "../components/speech/PromptSelector";
+} from "@components/speech/PromptSelector";
 import ReactMarkdown from "react-markdown";
-import { saveTranscriptToFirestore } from "@/app/lib/saveTranscript";
-import TranscriptStats from "../components/speech/TranscriptStats";
-import { TranscriptList } from "@/app/components/speech/TranscriptList";
-import RecordingPromptPanel from "../components/speech/RecordingPromptPanel";
-import { SummaryDisplay } from "../components/speech/SummaryDisplay";
-import GraphSelector from "../components/speech/GraphSelector";
-import GraphDisplay from "../components/speech/GraphDisplay";
+import { saveTranscriptToFirestore } from "@lib/saveTranscript";
+import TranscriptStats from "@components/speech/TranscriptStats";
+import { TranscriptList } from "@components/speech/TranscriptList";
+import RecordingPromptPanel from "@components/speech/RecordingPromptPanel";
+import { SummaryDisplay } from "@components/speech/SummaryDisplay";
+import GraphSelector from "@components/speech/GraphSelector";
+import GraphDisplay from "@components/speech/GraphDisplay";
 
 export default function SpeechPage() {
   const [recording, setRecording] = useState(false);

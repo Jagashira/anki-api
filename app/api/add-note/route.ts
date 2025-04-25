@@ -1,5 +1,5 @@
-import { getImageUrl } from "@/app/lib/getImageUrl";
-import getAudioFromGoogle from "@/app/lib/getAudio";
+import { getImageUrl } from "@/utils/getImageUrl";
+import getAudioFromGoogle from "@/utils/getAudio";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUnixTimeRange } from "@/app/lib/getUnixTimeRange";
+import { getUnixTimeRange } from "@/utils/getUnixTimeRange";
 
 export async function GET(req: NextRequest) {
   console.log("USAGE API CALLED");

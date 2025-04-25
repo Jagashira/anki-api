@@ -22,7 +22,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@components/*": ["./app/components/*"]
+      "@components/*": ["./components/*"],
+      "@utils/*": ["./utils/*"],
+      "@styles/*": ["./styles/*"],
+      "@hooks/*": ["./hooks/*"],
+      "@context/*": ["./context/*"],
+      "@assets/*": ["./assets/*"],
+      "@lib/*": ["./lib/*"],
+      "@types/*": ["./types/*"]
     }
   },
 

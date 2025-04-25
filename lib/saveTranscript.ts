@@ -1,5 +1,5 @@
 // /lib/saveTranscript.ts
-import { db } from "@/app/lib/firebase";
+import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 type SaveTranscriptParams = {

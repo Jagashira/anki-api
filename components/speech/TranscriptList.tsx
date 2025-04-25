@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { db } from "@/app/lib/firebase"; // Firestoreのインポート
+import { db } from "@/lib/firebase"; // Firestoreのインポート
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { TranscriptCard } from "./TranscriptCard";
 import { PromptType } from "./PromptSelector";
