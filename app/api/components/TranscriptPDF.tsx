@@ -1,6 +1,7 @@
 import { Document, Page, Text, StyleSheet, Font } from "@react-pdf/renderer";
 import markdownToTxt from "markdown-to-txt";
 
+// フォント登録はここでも行う
 Font.register({
   family: "Noto Sans JP",
   fonts: [

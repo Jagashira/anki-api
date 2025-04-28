@@ -80,6 +80,9 @@ importers:
       markdown-to-txt:
         specifier: ^2.0.1
         version: 2.0.1
+      marked:
+        specifier: ^15.0.11
+        version: 15.0.11
       next:
         specifier: 15.2.5
         version: 15.2.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1897,6 +1900,11 @@ packages:
 
   markdown-to-txt@2.0.1:
     resolution: {integrity: sha512-Hsj7KTN8k1gutlLum3vosHwVZGnv8/cbYKWVkUyo/D1rzOYddbDesILebRfOsaVfjIBJank/AVOySBlHAYqfZw==}
+
+  marked@15.0.11:
+    resolution: {integrity: sha512-1BEXAU2euRCG3xwgLVT1y0xbJEld1XOrmRJpUwRCcy7rxhSCwMrmEu9LXoPhHSCJG41V7YcQ2mjKRr5BA3ITIA==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   marked@4.3.0:
     resolution: {integrity: sha512-PRsaiG84bK+AMvxziE/lCFss8juXjNaWzVbN5tXAm4XjeaS9NAHhop+PjQxz2A9h8Q4M/xGmzP8vqNwy6JeK0A==}
@@ -4517,6 +4525,8 @@ snapshots:
       lodash.escape: 4.0.1
       lodash.unescape: 4.0.1
       marked: 4.3.0
+
+  marked@15.0.11: {}
 
   marked@4.3.0: {}
 

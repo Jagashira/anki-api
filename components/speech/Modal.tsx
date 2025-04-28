@@ -9,9 +9,9 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
-import { TranscriptPDF } from "./TranscriptPDF"; // 先ほど作ったPDFコンポーネントをインポート
 import { PromptType } from "./PromptSelector";
 import dynamic from "next/dynamic";
+import DownloadButton from "./DownloadButton";
 
 // PDFDownloadLinkの動的インポート
 const PDFDownloadLink = dynamic(
@@ -52,20 +52,13 @@ export const Modal = ({
         </DialogDescription>
 
         {/* ✅ PDFダウンロードリンク */}
-        <div className="mt-4">
-          <PDFDownloadLink
-            document={
-              <TranscriptPDF
-                content={content}
-                date={date}
-                isMarkdown={isMarkdown === "markdown"}
-              />
-            }
-            fileName="transcript.pdf"
-            className="inline-block bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
-          >
-            {({ loading }) => (loading ? "準備中..." : "PDFとしてダウンロード")}
-          </PDFDownloadLink>
+        <div>
+          {/* 他のコンテンツ */}
+          <DownloadButton
+            content={content}
+            date={date}
+            isMarkdown={isMarkdown === "markdown"}
+          />
         </div>
 
         <DialogClose

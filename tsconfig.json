@@ -29,7 +29,8 @@
       "@context/*": ["./context/*"],
       "@assets/*": ["./assets/*"],
       "@lib/*": ["./lib/*"],
-      "@types/*": ["./types/*"]
+      "@types/*": ["./types/*"],
+      "@fonts/*": ["./public/fonts/*"]
     }
   },
 
