@@ -20,10 +20,13 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
 
     if (data.error) {
+      console.error("AnkiConnectからのエラー:", data.error);
       return NextResponse.json({ error: data.error }, { status: 500 });
     }
 
     // デッキ名を返す
+    console.log("デッキの取得に成功しました");
+    console.log("取得したデッキ名:", data.result);
     return NextResponse.json({ decks: data.result });
   } catch (error) {
     console.error("デッキ名の取得に失敗:", error);

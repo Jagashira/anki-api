@@ -21,12 +21,16 @@ export async function POST(req: NextRequest) {
 
     // 成功した場合、タグを返す
     if (data.error) {
+      console.error("AnkiConnectからのエラー:", data.error);
       return NextResponse.json({ error: data.error }, { status: 500 });
     }
 
+    // タグを返す
+    console.log("タグの取得に成功しました");
+    console.log("取得したタグ:", data.result);
     return NextResponse.json({ tags: data.result || [] });
   } catch (error) {
-    console.error("AnkiConnect API呼び出しエラー:", error);
+    console.error("タグの取得に失敗:", error);
     return NextResponse.json(
       { error: "AnkiConnectからタグの取得に失敗しました" },
       { status: 500 }

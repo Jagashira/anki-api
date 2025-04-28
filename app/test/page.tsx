@@ -1,100 +1,181 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { useFetchDecks } from "@/hooks/anki/useFetchDecks";
+import { useFetchTags } from "@/hooks/anki/useFetchTags";
+import DeckSelect from "@/components/anki/DeckSelect";
+import { Tag } from "lucide-react";
+import TagSelect from "@/components/anki/TagSelect";
+import AddButton from "@/components/anki/AddButton";
+import WordForm from "@/components/anki/WordForm";
+import MessageDisplay from "@/components/anki/MessageDisplay";
 
-export default function SpeechPage() {
-  const [webmURL, setWebmURL] = useState<string | null>(null);
-  const [mp3URL, setMp3URL] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [summary, setSummary] = useState<string>("");
-  const [transcript, setTranscript] = useState<string>("");
-  const [audioDuration, setAudioDuration] = useState<number | null>(null); // 音声の長さ
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+export default function HomePage() {
+  const [word, setWord] = useState("");
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedDeck, setSelectedDeck] = useState<string | null>(null);
+  const [img, setimg] = useState<string | null>(null);
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
 
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = mediaRecorder;
-    const chunks: Blob[] = [];
+  (""); // 選択されたデッキ
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
+  const { decks, error: decksError, loading: decksLoading } = useFetchDecks();
+  const { tags, error: tagsError, loading: tagsLoading } = useFetchTags();
 
-    mediaRecorder.onstop = async () => {
-      setAudioChunks(chunks);
-      const audioBlob = new Blob(chunks, { type: "audio/webm" });
+  const handleTagChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTag(e.target.value);
+  };
 
-      // 音声ファイルを送信
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "audio.webm");
-      const res = await fetch("/api/test-api", {
+  const handleDeckChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedDeck(e.target.value);
+    console.log("test", e.target.value);
+  };
+
+  const handleAddWord = async () => {
+    if (isSubmitting) return; // 二重送信防止（保険）
+
+    setIsSubmitting(true); // 🔒ボタン無効化
+
+    try {
+      const res = await fetch("/api/add-note", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word, selectedTag, selectedDeck }),
       });
+
       const data = await res.json();
 
-      if (data.text) {
-        setTranscript(data.text);
-        setWebmURL(data.webmUrl);
-        setMp3URL(data.mp3Url);
+      if (data.audio?.base64) {
+        setAudioSrc(`data:audio/mp3;base64,${data.audio.base64}`);
       }
-    };
 
-    mediaRecorder.start();
-    setRecording(true);
+      if (res.ok) {
+        setMessage("✅ " + data.message);
+        setResult(data.content);
+        setimg(`data:image/jpeg;base64,${data.image.base64}`);
+        setStatus("Ankiに追加されました！");
+        setWord("");
+      } else {
+        setMessage("❌ " + data.error);
+        setResult("");
+        setStatus(`エラー: ${data.error}`);
+      }
+    } catch (error) {
+      setMessage("❌ エラーが発生しました");
+    } finally {
+      setIsSubmitting(false); // 🔓ボタン再有効化
+    }
   };
+  const fetchNotes = async (deckName: string, tagName?: string) => {
+    try {
+      setNotesLoading(true);
+      setNotesError(null);
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
+      const res = await fetch("/api/fetch-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deckName, tagName }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setNotes(data.notes || []);
+      } else {
+        setNotesError(data.error || "ノート取得エラー");
+      }
+    } catch (error) {
+      console.error(error);
+      setNotesError("ノート取得中にエラーが発生しました");
+    } finally {
+      setNotesLoading(false);
+    }
   };
-
   useEffect(() => {
-    return () => {
-      // コンポーネントアンマウント時に不要なBlob URLを解放
-      if (webmURL) URL.revokeObjectURL(webmURL);
-      if (mp3URL) URL.revokeObjectURL(mp3URL);
-    };
-  }, [webmURL, mp3URL]);
+    if (selectedDeck) {
+      fetchNotes(selectedDeck, selectedTag || undefined);
+    }
+  }, [selectedDeck, selectedTag]);
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">リアルタイム録音</CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-4">
-          <Button onClick={recording ? stopRecording : startRecording}>
-            {recording ? "⏹ 録音停止" : "🎙 録音開始"}
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="">
+      <div className="max-w-md p-6  mx-auto">
+        <h1 className=" text-4xl font-bold mb-4 ">英単語簡単に覚える君</h1>
 
-      {/* 音声の再生 */}
-      {(webmURL || mp3URL) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>🎧 音声の再生</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {webmURL && (
-              <div>
-                <p className="text-gray-800 font-semibold">🎙 WebM録音:</p>
-                <audio controls src={webmURL} className="w-full" />
-              </div>
-            )}
-            {mp3URL && (
-              <div>
-                <p className="text-gray-800 font-semibold">🎶 MP3変換後:</p>
-                <audio controls src={mp3URL} className="w-full" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+        <div>
+          <DeckSelect
+            decks={decks}
+            selectedDeck={selectedDeck}
+            decksLoading={decksLoading}
+            decksError={decksError}
+            handleDeckChange={handleDeckChange}
+          />
+
+          <TagSelect
+            tags={tags}
+            selectedtag={selectedTag}
+            tagsLoading={tagsLoading}
+            tagsError={tagsError}
+            handletagChange={handleTagChange}
+          />
+        </div>
+        <WordForm word={word} setWord={setWord} handleAddWord={handleAddWord} />
+
+        <AddButton isSubmitting={isSubmitting} handleAddWord={handleAddWord} />
+
+        <MessageDisplay message={message} result={result} status={status} />
+      </div>
+      <div className="max-w-4xl p-6  mx-auto">
+        {notesLoading && <p>ノート読み込み中...</p>}
+        {notesError && <p className="text-red-500">{notesError}</p>}
+
+        {notes.length > 0 && (
+          <div className="mt-4">
+            <h2 className="text-lg font-bold mb-2 text-center">
+              取得したノート一覧
+            </h2>
+
+            {/* 横スクロールにする親要素 */}
+            <div className="flex space-x-4 overflow-x-auto pb-4">
+              {notes.map((note) => (
+                <div
+                  key={note.noteId}
+                  className="min-w-[300px] p-4 border rounded bg-white shadow break-words overflow-hidden"
+                >
+                  <div className="mb-2">
+                    <strong className="text-blue-700">Front:</strong>{" "}
+                    {note.fields.Front.value}
+                  </div>
+
+                  <div className="mb-2">
+                    <strong className="text-blue-700">Back:</strong>
+                    <div
+                      className="mt-1 text-gray-700 whitespace-pre-wrap break-words"
+                      dangerouslySetInnerHTML={{
+                        __html: note.fields.Back.value,
+                      }}
+                    />
+                  </div>
+
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-500">
+                      <strong>Tags:</strong> {note.tags.join(", ")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
