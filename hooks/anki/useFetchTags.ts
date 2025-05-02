@@ -1,5 +1,5 @@
-// hooks/useFetchTags.ts
-import { settings } from "firebase/analytics";
+// hooks/anki/useFetchTags.ts
+"use client";
 import { useState, useEffect } from "react";
 
 export const useFetchTags = () => {
@@ -10,18 +10,28 @@ export const useFetchTags = () => {
   const fetchTags = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/fetch-tags", {
+      const response = await fetch("http://localhost:8765", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "getTags",
+          version: 6,
+          params: {},
+        }),
       });
+
       const data = await response.json();
+      console.log("Tags data:", data); // デバッグ用
 
       if (data.error) {
         setError(data.error);
       } else {
-        setTags(data.tags || []);
+        setTags(data.result || []);
       }
     } catch (err) {
-      setError("デッキの取得中にエラーが発生しました");
+      setError("Ankiが起動していないか、AnkiConnectにアクセスできません");
     } finally {
       setLoading(false);
     }
