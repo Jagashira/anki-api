@@ -1,5 +1,6 @@
 // hooks/anki/useAddWord.ts
 import { Dispatch, SetStateAction } from "react";
+import { prompts } from "@/lib/anki/definitions";
 
 interface AddWordParams {
   word: string;
@@ -12,6 +13,7 @@ interface AddWordParams {
   setAudioSrc: Dispatch<SetStateAction<string | null>>;
   setWord: Dispatch<SetStateAction<string>>;
   setNotes: Dispatch<SetStateAction<any[]>>;
+  language: "english" | "japanese";
 }
 
 export const addWord = async ({
@@ -25,6 +27,7 @@ export const addWord = async ({
   setAudioSrc,
   setWord,
   setNotes,
+  language,
 }: AddWordParams) => {
   if (!word || !selectedDeck) {
     setMessage("😡 単語とデッキは必須です");
@@ -37,7 +40,12 @@ export const addWord = async ({
     const res = await fetch("/api/add-note", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word, selectedTag, selectedDeck }),
+      body: JSON.stringify({
+        word,
+        selectedTag,
+        selectedDeck,
+        prompt: prompts[language].prompt(word),
+      }),
     });
 
     const data = await res.json();

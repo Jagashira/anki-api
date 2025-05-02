@@ -10,6 +10,7 @@ import WordForm from "@/components/anki/WordForm";
 import MessageDisplay from "@/components/anki/MessageDisplay";
 import NotesList from "@/components/anki/NotesList";
 import { addWord } from "@/hooks/anki/useAddWord";
+import { prompts } from "@/lib/anki/definitions";
 
 export default function HomePage() {
   const [word, setWord] = useState("");
@@ -20,6 +21,7 @@ export default function HomePage() {
   const [img, setimg] = useState<string | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [language, setLanguage] = useState<"english" | "japanese">("english");
 
   const { decks, error: decksError, loading: decksLoading } = useFetchDecks();
   const { tags, error: tagsError, loading: tagsLoading } = useFetchTags();
@@ -52,6 +54,7 @@ export default function HomePage() {
       setAudioSrc,
       setWord,
       setNotes,
+      language,
     });
   };
 
@@ -64,7 +67,20 @@ export default function HomePage() {
   return (
     <div className="">
       <div className="max-w-md p-6 mx-auto">
-        <h1 className="text-4xl font-bold mb-4">英単語簡単に覚える君</h1>
+        <h1 className="text-4xl font-bold mb-4">{prompts[language].title}</h1>
+        <div className="mb-4">
+          <label className="mr-2 font-semibold">言語モード:</label>
+          <select
+            value={language}
+            onChange={(e) =>
+              setLanguage(e.target.value as "english" | "japanese")
+            }
+            className="border rounded px-2 py-1"
+          >
+            <option value="english">英単語</option>
+            <option value="japanese">日本語</option>
+          </select>
+        </div>
 
         <div>
           <DeckSelect

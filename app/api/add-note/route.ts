@@ -3,8 +3,8 @@ import getAudioFromGoogle from "@/utils/getAudio";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { word, selectedTag, selectedDeck } = await req.json();
-  console.log(word, selectedTag, selectedDeck);
+  const { word, selectedTag, selectedDeck, prompt } = await req.json(); // 👈 promptを受け取る
+  console.log(word, selectedTag, selectedDeck, prompt);
 
   // ✅ 入力チェック
   if (!word) {
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
   //openaiのAPIキーが設定されているか確認
   const openAiKey = process.env.OPENAI_API_KEY;
   if (!openAiKey) {
@@ -100,29 +101,6 @@ export async function POST(req: NextRequest) {
   });
 
   // 🤖 ChatGPTで意味・用法を生成
-  const prompt = `次の英単語について、以下の情報を出力してください：
-- 意味（日本語）
-- 発音記号（アメリカ英語）
-- 例文（英語と日本語訳）
-- 類義語・関連語（発音記号とその意味）
-- 使い方（コラムのようなプラスの知識）
-
-英単語: "${word}"
-
-出力形式：/アメリカ英語の発音記号/
-意味（日本語）:
-  1. ...
-  2. ...
-
-例文:
-...
-
-類義語・関連語:
-...
-
-使い方:
-💡 ...`;
-
   const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -131,7 +109,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: prompt }], // 👈 promptを利用
       temperature: 0.7,
     }),
   });
