@@ -21,7 +21,16 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@components/*": ["./components/*"],
+      "@utils/*": ["./utils/*"],
+      "@styles/*": ["./styles/*"],
+      "@hooks/*": ["./hooks/*"],
+      "@context/*": ["./context/*"],
+      "@assets/*": ["./assets/*"],
+      "@lib/*": ["./lib/*"],
+      "@types/*": ["./types/*"],
+      "@fonts/*": ["./public/fonts/*"]
     }
   },
 

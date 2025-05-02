@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Image from "next/image";
-import styles from "@/app/ui/Layout.module.css";
+
+import { MantineProvider } from "@mantine/core";
+import "@mantine/core/styles.css"; // ← これも必要です
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,11 +51,8 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={styles.wrapper}>
-        <Header />
-        <Background />
-
-        {children}
+      <body>
+        <MantineProvider>{children}</MantineProvider>
       </body>
     </html>
   );
