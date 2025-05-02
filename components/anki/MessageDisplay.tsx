@@ -6,15 +6,10 @@ interface MessageDisplayProps {
   status?: string;
 }
 
-const MessageDisplay: React.FC<MessageDisplayProps> = ({
-  message,
-  result,
-  status,
-}) => {
+const MessageDisplay: React.FC<MessageDisplayProps> = ({ message, result }) => {
   return (
     <div>
       {message && <p className="mt-4">{message}</p>}
-      {status && <p>{status}</p>}
 
       {result && (
         <div className="mt-4 p-3 bg-gray-100 rounded">

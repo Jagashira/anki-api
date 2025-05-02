@@ -23,7 +23,12 @@ const NotesList: React.FC<NotesListProps> = ({ notes, loading, error }) => {
         <p>ノート読み込み中...</p>
       </div>
     );
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (error)
+    return (
+      <div className="ext-lg font-bold mb-2 text-center">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
 
   if (notes.length === 0) return null;
 
