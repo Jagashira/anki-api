@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
   const { word, selectedTag, selectedDeck } = await req.json();
   console.log(word, selectedTag, selectedDeck);
 
+  // ✅ 入力チェック
   if (!word) {
     return NextResponse.json(
       { error: "単語が入力されていません" },
@@ -13,6 +14,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ✅ デッキ名チェック
+  if (!selectedDeck) {
+    return NextResponse.json(
+      { error: "デッキ名が選択されていません" },
+      { status: 400 }
+    );
+  }
+  //openaiのAPIキーが設定されているか確認
   const openAiKey = process.env.OPENAI_API_KEY;
   if (!openAiKey) {
     return NextResponse.json(
@@ -21,6 +30,76 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ✅ 重複チェック: 既存ノートがあるか確認
+  const checkDuplicate = await fetch("http://127.0.0.1:8765", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "findNotes",
+      version: 6,
+      params: {
+        query: `deck:"${selectedDeck}" Front:"${word}"`,
+      },
+    }),
+  });
+
+  const duplicateData = await checkDuplicate.json();
+  const noteIds = duplicateData.result;
+
+  if (noteIds && noteIds.length > 0) {
+    const infoRes = await fetch("http://127.0.0.1:8765", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "notesInfo",
+        version: 6,
+        params: { notes: noteIds },
+      }),
+    });
+
+    const infoData = await infoRes.json();
+    const existingNote = infoData.result[0];
+
+    return NextResponse.json({
+      message: "既に同じ単語が登録されています",
+      duplicateNote: {
+        noteId: existingNote.noteId,
+        fields: existingNote.fields,
+        tags: existingNote.tags,
+      },
+    });
+  }
+
+  // 🔊 音声と 🖼️ 画像の取得
+  const imageUrl = await getImageUrl(word);
+  if (!imageUrl) {
+    return new Response(JSON.stringify({ error: "画像の取得に失敗しました" }), {
+      status: 500,
+    });
+  }
+
+  const imageRes = await fetch(imageUrl);
+  const buffer = await imageRes.arrayBuffer();
+  const base64Image = Buffer.from(buffer).toString("base64");
+  const fileName = `${word}_${Date.now()}.jpg`;
+
+  const audio = await getAudioFromGoogle(word);
+
+  // AnkiConnect: 画像の保存
+  await fetch("http://127.0.0.1:8765", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "storeMediaFile",
+      version: 6,
+      params: {
+        filename: fileName,
+        data: base64Image,
+      },
+    }),
+  });
+
+  // 🤖 ChatGPTで意味・用法を生成
   const prompt = `次の英単語について、以下の情報を出力してください：
 - 意味（日本語）
 - 発音記号（アメリカ英語）
@@ -43,38 +122,6 @@ export async function POST(req: NextRequest) {
 
 使い方:
 💡 ...`;
-  //画像
-
-  const imageUrl = await getImageUrl(word);
-  if (!imageUrl) {
-    return new Response(JSON.stringify({ error: "画像の取得に失敗しました" }), {
-      status: 500,
-    });
-  }
-  // 画像データを取得してBase64化
-  const imageRes = await fetch(imageUrl);
-  const buffer = await imageRes.arrayBuffer();
-  const base64Image = Buffer.from(buffer).toString("base64");
-  const fileName = `${word}_${Date.now()}.jpg`;
-
-  //音声の取得
-  const audio = await getAudioFromGoogle(word);
-
-  // AnkiConnect: storeMediaFile
-  await fetch("http://127.0.0.1:8765", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "storeMediaFile",
-      version: 6,
-      params: {
-        filename: fileName,
-        data: base64Image,
-      },
-    }),
-  });
-
-  //openai
 
   const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -99,17 +146,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 改行を `<br>` に変換する処理
   const formattedGenerated =
     generated
       .replace(/（/g, "(")
       .replace(/）/g, ")")
-      .replace(/\n+/g, "<br>") // 改行を `<br>` に置き換え
+      .replace(/\n+/g, "<br>")
       .replace(/([^\n]+)(\n)?/g, "$1<br> ") +
-    `<br><img src="${`data:image/jpeg;base64,${base64Image}`}" alt="${word}"><br><br><audio controls><source src="data:audio/mp3;base64,${
-      audio.base64
-    }" type="audio/mp3"></audio>`; // 改行を `<br>` に置き換え
+    `<br><img src="data:image/jpeg;base64,${base64Image}" alt="${word}"><br><br><audio controls><source src="data:audio/mp3;base64,${audio.base64}" type="audio/mp3"></audio>`;
 
+  // 📝 Ankiにノート追加
   const ankiRes = await fetch("http://127.0.0.1:8765", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -118,13 +163,13 @@ export async function POST(req: NextRequest) {
       version: 6,
       params: {
         note: {
-          deckName: `${selectedDeck}`,
+          deckName: selectedDeck,
           modelName: "Basic",
           fields: {
-            Front: `${word}`,
-            Back: formattedGenerated, // `<br>` で改行を反映
+            Front: word,
+            Back: formattedGenerated,
           },
-          tags: [`${selectedTag}`],
+          tags: [selectedTag],
         },
       },
     }),

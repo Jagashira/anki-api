@@ -8,6 +8,7 @@ import TagSelect from "@/components/anki/TagSelect";
 import AddButton from "@/components/anki/AddButton";
 import WordForm from "@/components/anki/WordForm";
 import MessageDisplay from "@/components/anki/MessageDisplay";
+import NotesList from "@/components/anki/NotesList";
 
 export default function HomePage() {
   const [word, setWord] = useState("");
@@ -17,7 +18,6 @@ export default function HomePage() {
   const [selectedDeck, setSelectedDeck] = useState<string | null>(null);
   const [img, setimg] = useState<string | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -56,15 +56,26 @@ export default function HomePage() {
       }
 
       if (res.ok) {
-        setMessage("✅ " + data.message);
+        setMessage("🥰 " + data.message);
         setResult(data.content);
-        setimg(`data:image/jpeg;base64,${data.image.base64}`);
-        setStatus("Ankiに追加されました！");
+        setimg(`data:image/jpeg;base64,${data.image?.base64}`);
         setWord("");
+
+        // 重複ノートがあれば先頭に追加
+        if (data.duplicateNote) {
+          setNotes((prev) => [
+            data.duplicateNote,
+            ...prev.filter((n) => n.noteId !== data.duplicateNote.noteId),
+          ]);
+          setMessage("🫥 " + data.message);
+        }
+        // else {
+        //   // 新しいノートの取得や更新があるなら、ここで再フェッチしてもOK
+        //   fetchNotes(selectedDeck!, selectedTag || undefined);
+        // }
       } else {
-        setMessage("❌ " + data.error);
+        setMessage("😡 " + data.error);
         setResult("");
-        setStatus(`エラー: ${data.error}`);
       }
     } catch (error) {
       setMessage("❌ エラーが発生しました");
@@ -133,49 +144,7 @@ export default function HomePage() {
 
         <MessageDisplay message={message} result={result} status={status} />
       </div>
-      <div className="max-w-4xl p-6  mx-auto">
-        {notesLoading && <p>ノート読み込み中...</p>}
-        {notesError && <p className="text-red-500">{notesError}</p>}
-
-        {notes.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-lg font-bold mb-2 text-center">
-              取得したノート一覧
-            </h2>
-
-            {/* 横スクロールにする親要素 */}
-            <div className="flex space-x-4 overflow-x-auto pb-4">
-              {notes.map((note) => (
-                <div
-                  key={note.noteId}
-                  className="min-w-[300px] p-4 border rounded bg-white shadow break-words overflow-hidden"
-                >
-                  <div className="mb-2">
-                    <strong className="text-blue-700">Front:</strong>{" "}
-                    {note.fields.Front.value}
-                  </div>
-
-                  <div className="mb-2">
-                    <strong className="text-blue-700">Back:</strong>
-                    <div
-                      className="mt-1 text-gray-700 whitespace-pre-wrap break-words"
-                      dangerouslySetInnerHTML={{
-                        __html: note.fields.Back.value,
-                      }}
-                    />
-                  </div>
-
-                  {note.tags && note.tags.length > 0 && (
-                    <div className="mt-2 text-sm text-gray-500">
-                      <strong>Tags:</strong> {note.tags.join(", ")}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <NotesList notes={notes} loading={notesLoading} error={notesError} />
     </div>
   );
 }
