@@ -28,7 +28,15 @@ const DeckSelect: React.FC<DeckSelectProps> = ({
         {decksLoading ? (
           <option disabled>読み込み中...</option>
         ) : decksError ? (
-          <option disabled>エラー: {decksError}</option>
+          <>
+            <option disabled>エラー: {decksError}</option>
+            <option key="english" value={"English"}>
+              English Word
+            </option>
+            <option key="japanese" value={"Japanese"}>
+              Japanese Word
+            </option>
+          </>
         ) : (
           decks.map((deck, index) => (
             <option key={index} value={deck}>

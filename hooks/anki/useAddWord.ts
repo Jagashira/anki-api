@@ -30,7 +30,6 @@ export const addWord = async ({
   language,
   isAnkiConnected,
 }: AddWordParams) => {
-  selectedDeck = "English Word";
   if (!word || !selectedDeck) {
     setMessage("😡 単語とデッキは必須です");
     return;
