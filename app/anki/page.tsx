@@ -11,6 +11,8 @@ import MessageDisplay from "@/components/anki/MessageDisplay";
 import NotesList from "@/components/anki/NotesList";
 import { addWord } from "@/hooks/anki/useAddWord";
 import { prompts } from "@/lib/anki/definitions";
+import { addWordToFirebase } from "@/hooks/anki/useAddWordToFirebase";
+import { checkAnkiConnection } from "@/lib/anki/checkAnkiConnextion";
 
 export default function HomePage() {
   const [word, setWord] = useState("");
@@ -22,9 +24,11 @@ export default function HomePage() {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [language, setLanguage] = useState<"english" | "japanese">("english");
+  const [isAnkiConnected, setIsAnkiConnected] = useState(false);
 
   const { decks, error: decksError, loading: decksLoading } = useFetchDecks();
   const { tags, error: tagsError, loading: tagsLoading } = useFetchTags();
+
   const {
     notes,
     loading: notesLoading,
@@ -42,7 +46,7 @@ export default function HomePage() {
     console.log("test", e.target.value);
   };
 
-  const handleAddWord = () => {
+  const handleAddWord = async () => {
     addWord({
       word,
       selectedTag,
@@ -55,19 +59,49 @@ export default function HomePage() {
       setWord,
       setNotes,
       language,
+      isAnkiConnected,
     });
   };
 
   useEffect(() => {
-    if (selectedDeck) {
-      fetchNotes(selectedDeck, selectedTag || undefined);
-    }
+    const checkAnkiConnectionAndFetchNotes = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8765", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "version", version: 6 }),
+        });
+        const data = await res.json();
+
+        if (data.result) {
+          setIsAnkiConnected(true);
+
+          if (selectedDeck) {
+            fetchNotes(selectedDeck, selectedTag || undefined);
+          }
+        } else {
+          setIsAnkiConnected(false);
+        }
+      } catch (err) {
+        setIsAnkiConnected(false);
+      }
+    };
+
+    checkAnkiConnectionAndFetchNotes();
   }, [selectedDeck, selectedTag]);
 
   return (
     <div className="">
       <div className="max-w-md p-6 mx-auto">
         <h1 className="text-4xl font-bold mb-4">{prompts[language].title}</h1>
+        <div>
+          {/*ankiの接続状態を表示*/}
+          {isAnkiConnected ? (
+            <p className="text-green-500">Ankiに接続中...</p>
+          ) : (
+            <p className="text-red-500">Ankiに接続できません</p>
+          )}
+        </div>
         <div className="mb-4">
           <label className="mr-2 font-semibold">言語モード:</label>
           <select
@@ -101,7 +135,11 @@ export default function HomePage() {
         </div>
 
         <WordForm word={word} setWord={setWord} handleAddWord={handleAddWord} />
-        <AddButton isSubmitting={isSubmitting} handleAddWord={handleAddWord} />
+        <AddButton
+          isSubmitting={isSubmitting}
+          handleAddWord={handleAddWord}
+          isAnkiConnected={isAnkiConnected}
+        />
         <MessageDisplay message={message} result={result} />
       </div>
 
