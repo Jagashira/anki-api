@@ -11,7 +11,7 @@ export function useFetchNotes() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch("/api/fetch-notes", {
+      const res = await fetch("/api/anki/fetch-notes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

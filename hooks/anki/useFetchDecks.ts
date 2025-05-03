@@ -9,7 +9,7 @@ export const useFetchDecks = () => {
   const fetchDecks = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/fetch-decks", {
+      const response = await fetch("/api/anki/fetch-decks", {
         method: "POST",
       });
       const data = await response.json();

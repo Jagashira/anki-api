@@ -10,25 +10,17 @@ export const useFetchTags = () => {
   const fetchTags = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8765", {
+      const response = await fetch("/api/anki/fetch-tags", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "getTags",
-          version: 6,
-          params: {},
-        }),
       });
 
       const data = await response.json();
-      console.log("Tags data:", data); // デバッグ用
+      console.log("Tags data:", data.tags); // デバッグ用
 
       if (data.error) {
         setError(data.error);
       } else {
-        setTags(data.result || []);
+        setTags(data.tags || []);
       }
     } catch (err) {
       setError("Ankiが起動していないか、AnkiConnectにアクセスできません");

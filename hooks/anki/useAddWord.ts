@@ -37,7 +37,7 @@ export const addWord = async ({
   setIsSubmitting(true);
 
   try {
-    const res = await fetch("/api/add-note", {
+    const res = await fetch("/api/anki/add-note", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
