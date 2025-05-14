@@ -22,6 +22,7 @@ export default function SpeechPage() {
   const [fileSize, setFileSize] = useState<number | null>(null);
   const [canSendWhisper, setCanSendWhisper] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isSendingToWhisper, setIsSendingToWhisper] = useState(false);
@@ -55,10 +56,12 @@ export default function SpeechPage() {
       const duration = await getAudioDuration(audioBlob);
       setAudioDuration(duration);
 
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+
       const size = audioBlob.size;
       setFileSize(size);
       setCanSendWhisper(true);
-      setDownloadUrl(null); // 失敗時リンクを初期化
     };
 
     mediaRecorder.start();
@@ -163,9 +166,8 @@ export default function SpeechPage() {
           <p>📦 ファイルサイズ: {(fileSize! / 1024 / 1024).toFixed(2)} MB</p>
           <p>
             💰 推定使用量: 約 {((audioDuration / 60) * 1000).toFixed(0)}{" "}
-            トークン
+            トークン ({calculateWhisperUsage(audioDuration).jpy} 円)
           </p>
-          <p>{calculateWhisperUsage(audioDuration).jpy} 円</p>
 
           {fileSize! > 26_214_400 ? (
             <p className="text-red-600 font-bold">
@@ -190,6 +192,12 @@ export default function SpeechPage() {
               <p className="text-sm text-gray-500">
                 （送信失敗したら何度でも押せます）
               </p>
+              {audioUrl && (
+                <div className="space-y-1">
+                  {/* <p className="text-gray-700 font-medium">🔊 録音プレビュー</p> */}
+                  <audio src={audioUrl} controls className="w-full" />
+                </div>
+              )}
             </>
           )}
         </div>
