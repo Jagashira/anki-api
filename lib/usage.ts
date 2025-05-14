@@ -28,3 +28,20 @@ export const getAudioDuration = (audioBlob: Blob): Promise<number> => {
     reader.readAsArrayBuffer(audioBlob);
   });
 };
+
+// * @param duration 秒（例：80.5秒）
+// * @param exchangeRate 為替（デフォルト150円/USD）
+// */
+export const calculateWhisperUsage = (
+  duration: number,
+  exchangeRate = 150
+): { usd: number; jpy: number } => {
+  const costPerSecondUSD = 0.006 / 60;
+  const usd = duration * costPerSecondUSD;
+  const jpy = usd * exchangeRate;
+
+  return {
+    usd: parseFloat(usd.toFixed(10)),
+    jpy: Math.round(jpy),
+  };
+};
