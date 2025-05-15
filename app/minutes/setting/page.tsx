@@ -1,7 +1,12 @@
 // app/minutes/setting/page.tsx
-"use client";
 
-export default function SettingsPage() {
+import PromptEditor, { Prompt } from "@/components/minutes/PromptEditor";
+import PromptEditorWrapper from "@/components/minutes/PromptEditorWrapper";
+import { getSettings, saveSettings } from "@/lib/minutes/settings";
+
+export default async function SettingsPage() {
+  const settings = await getSettings();
+  const prompts: Prompt[] = settings?.prompts || [];
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">⚙️ アプリ設定</h1>
@@ -15,7 +20,7 @@ export default function SettingsPage() {
           録音時に使う要約プロンプトを編集できます。
         </p>
 
-        {/* ここに PromptEditor コンポーネント（後で作成）を挿入 */}
+        <PromptEditorWrapper prompts={prompts} />
       </section>
 
       {/* 🛠️ その他の設定カード（拡張用） */}
