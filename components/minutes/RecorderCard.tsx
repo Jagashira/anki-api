@@ -10,8 +10,10 @@ type Props = {
   elapsed: number;
   prompt: string;
   stream: MediaStream | null;
+  chunkDuration: number;
   onToggle: () => void;
   onPromptChange: (value: string) => void;
+  onChunkDurationChange: (value: number) => void;
 };
 
 export default function RecorderCard({
@@ -19,8 +21,10 @@ export default function RecorderCard({
   elapsed,
   prompt,
   stream,
+  chunkDuration,
   onToggle,
   onPromptChange,
+  onChunkDurationChange,
 }: Props) {
   const formatTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(
@@ -51,6 +55,23 @@ export default function RecorderCard({
       {/* 📜 プロンプト選択 */}
       <PromptSelector prompt={prompt} onChange={onPromptChange} />
       <PromptPreview prompt={prompt} />
+
+      {/* 🎛 チャンク長選択 */}
+      <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+        <label htmlFor="chunkDuration">⏱️ チャンク長：</label>
+        <select
+          id="chunkDuration"
+          value={chunkDuration}
+          onChange={(e) => onChunkDurationChange(Number(e.target.value))}
+          className="border px-2 py-1 rounded text-sm"
+        >
+          {[10, 20, 30, 60, 120, 300].map((sec) => (
+            <option key={sec} value={sec}>
+              {sec} 秒
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* ⏱ 時間 */}
       <div className="text-center text-gray-500 font-mono text-lg">

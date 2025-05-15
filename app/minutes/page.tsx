@@ -3,6 +3,7 @@
 import ChunkLogList from "@/components/minutes/ChunkLogList";
 import RecorderCard from "@/components/minutes/RecorderCard";
 import SummaryCard from "@/components/minutes/SummaryCard";
+import { saveMinutes } from "@/lib/minutes/save";
 import { fetchSummary } from "@/lib/minutes/summary";
 import { useRef, useState } from "react";
 
@@ -24,6 +25,8 @@ export default function RecorderPage() {
   const [logs, setLogs] = useState<ChunkLog[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [prompt, setPrompt] = useState(PROMPT_OPTIONS[0]);
+  const [chunkDuration, setChunkDuration] = useState(10); // 単位: 秒
+  const [isSaved, setIsSaved] = useState(false);
 
   const chunkIdRef = useRef(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,6 +34,13 @@ export default function RecorderPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const textBufferRef = useRef("");
   const recordingRef = useRef(false);
+
+  const handleSave = async () => {
+    if (!summary || logs.length === 0) return;
+    const id = await saveMinutes({ summary, logs, prompt });
+    alert(`保存しました。ドキュメントID: ${id}`);
+    setIsSaved(true); // ✅ 保存成功後にフラグON
+  };
 
   const recordChunk = async (): Promise<void> => {
     if (!recordingRef.current && !streamRef.current) return;
@@ -74,11 +84,12 @@ export default function RecorderPage() {
       };
 
       recorder.start();
-      setTimeout(() => recorder.stop(), 10_000);
+      setTimeout(() => recorder.stop(), chunkDuration * 1000);
     });
   };
 
   const startFullRecording = async () => {
+    setIsSaved(false);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
     recordingRef.current = true;
@@ -141,6 +152,7 @@ export default function RecorderPage() {
 
     const result = await fetchSummary(rawText);
     setSummary(result);
+    setIsSaved(false);
   };
 
   return (
@@ -151,16 +163,18 @@ export default function RecorderPage() {
           elapsed={elapsed}
           prompt={prompt}
           stream={streamRef.current}
+          chunkDuration={chunkDuration}
           onToggle={recording ? stopFullRecording : startFullRecording}
           onPromptChange={setPrompt}
+          onChunkDurationChange={setChunkDuration}
         />
+
         {summary && (
           <SummaryCard
             summary={summary}
             onRetry={retrySummary}
-            onSave={() => {
-              // 保存機能は後ほど追加可能
-            }}
+            onSave={handleSave}
+            disabled={isSaved}
           />
         )}
 
