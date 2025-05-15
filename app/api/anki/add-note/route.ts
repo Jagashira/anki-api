@@ -72,33 +72,38 @@ export async function POST(req: NextRequest) {
   }
 
   // 🔊 音声と 🖼️ 画像の取得
+
+  let base64Image: string | null = null;
+  let fileName: string | null = null;
+
   const imageUrl = await getImageUrl(word);
-  if (!imageUrl) {
-    return new Response(JSON.stringify({ error: "画像の取得に失敗しました" }), {
-      status: 500,
-    });
+  if (imageUrl) {
+    try {
+      const imageRes = await fetch(imageUrl);
+      const buffer = await imageRes.arrayBuffer();
+      base64Image = Buffer.from(buffer).toString("base64");
+      fileName = `${word}_${Date.now()}.jpg`;
+
+      // AnkiConnect: 画像の保存
+      await fetch("http://127.0.0.1:8765", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "storeMediaFile",
+          version: 6,
+          params: {
+            filename: fileName,
+            data: base64Image,
+          },
+        }),
+      });
+    } catch (error) {
+      console.warn("画像の取得または保存に失敗しました:", error);
+      base64Image = null;
+      fileName = null;
+    }
   }
-
-  const imageRes = await fetch(imageUrl);
-  const buffer = await imageRes.arrayBuffer();
-  const base64Image = Buffer.from(buffer).toString("base64");
-  const fileName = `${word}_${Date.now()}.jpg`;
-
   const audio = await getAudioFromGoogle(word);
-
-  // AnkiConnect: 画像の保存
-  await fetch("http://127.0.0.1:8765", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "storeMediaFile",
-      version: 6,
-      params: {
-        filename: fileName,
-        data: base64Image,
-      },
-    }),
-  });
 
   // 🤖 ChatGPTで意味・用法を生成
   const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -124,13 +129,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const formattedGenerated =
-    generated
-      .replace(/（/g, "(")
-      .replace(/）/g, ")")
-      .replace(/\n+/g, "<br>")
-      .replace(/([^\n]+)(\n)?/g, "$1<br> ") +
-    `<br><img src="data:image/jpeg;base64,${base64Image}" alt="${word}"><br><br><audio controls><source src="data:audio/mp3;base64,${audio.base64}" type="audio/mp3"></audio>`;
+  let formattedGenerated = generated
+    .replace(/（/g, "(")
+    .replace(/）/g, ")")
+    .replace(/\n+/g, "<br>")
+    .replace(/([^\n]+)(\n)?/g, "$1<br> ");
+
+  if (base64Image && fileName) {
+    formattedGenerated += `<br><img src="data:image/jpeg;base64,${base64Image}" alt="${word}"><br>`;
+  }
+  formattedGenerated += `<br><audio controls><source src="data:audio/mp3;base64,${audio.base64}" type="audio/mp3"></audio>`;
 
   // 📝 Ankiにノート追加
   const ankiRes = await fetch("http://127.0.0.1:8765", {
