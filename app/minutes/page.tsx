@@ -2,6 +2,8 @@
 
 import ChunkLogList from "@/components/minutes/ChunkLogList";
 import RecorderCard from "@/components/minutes/RecorderCard";
+import SummaryCard from "@/components/minutes/SummaryCard";
+import { fetchSummary } from "@/lib/minutes/summary";
 import { useRef, useState } from "react";
 
 type ChunkLog = {
@@ -29,12 +31,6 @@ export default function RecorderPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const textBufferRef = useRef("");
   const recordingRef = useRef(false);
-
-  const formatTime = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(
-      2,
-      "0"
-    )}`;
 
   const recordChunk = async (): Promise<void> => {
     if (!recordingRef.current && !streamRef.current) return;
@@ -139,147 +135,36 @@ export default function RecorderPage() {
       prev.map((log) => (log.id === id ? { ...log, ...updates } : log))
     );
   };
+  const retrySummary = async () => {
+    const rawText = textBufferRef.current.trim();
+    if (!rawText) return;
+
+    const result = await fetchSummary(rawText);
+    setSummary(result);
+  };
 
   return (
     <>
       <div className="p-6 max-w-2xl mx-auto">
-        <RecorderCard />
-        <ChunkLogList logs={logs} />
-        {/* 🎙️ したは保存のため残している*/}
-        -------------------------------------------------------------
-        <h1 className="text-2xl font-bold mb-4">🎙️ 議事録録音アプリ</h1>
-        <div className="flex items-center gap-4 mb-4">
-          <button
-            onClick={recording ? stopFullRecording : startFullRecording}
-            className={`px-6 py-2 rounded text-white font-semibold transition ${
-              recording
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {recording ? "⏹️ 録音停止と要約" : "⏺️ 録音開始"}
-          </button>
-
-          {recording && (
-            <span className="text-gray-700 font-mono text-lg">
-              ⏱️ {formatTime(elapsed)}
-            </span>
-          )}
-        </div>
-        <section className="mt-4">
-          <h2 className="text-lg font-semibold mb-2">📦 チャンクログ</h2>
-          <ul className="space-y-3">
-            {logs.map((log) => (
-              <li
-                key={log.id}
-                className={`p-3 border rounded shadow-sm ${
-                  log.status === "success"
-                    ? "bg-green-50 border-green-300"
-                    : log.status === "error"
-                    ? "bg-red-50 border-red-300"
-                    : "bg-yellow-50 border-yellow-300"
-                }`}
-              >
-                <div className="font-semibold">Chunk {log.id}</div>
-                {log.status === "sending" && <div>⏳ 送信中...</div>}
-                {log.status === "success" && <div>✅ 成功</div>}
-                {log.status === "error" && <div>❌ エラー: {log.error}</div>}
-                {log.text && (
-                  <div className="mt-2 text-sm whitespace-pre-wrap text-gray-700">
-                    {log.text}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <RecorderCard
+          recording={recording}
+          elapsed={elapsed}
+          prompt={prompt}
+          stream={streamRef.current}
+          onToggle={recording ? stopFullRecording : startFullRecording}
+          onPromptChange={setPrompt}
+        />
         {summary && (
-          <section className="mt-8 p-4 border rounded bg-white shadow">
-            <h2 className="text-lg font-bold mb-2">📋 GPTによる議事録要約</h2>
-            <div className="whitespace-pre-wrap text-gray-800">{summary}</div>
-          </section>
+          <SummaryCard
+            summary={summary}
+            onRetry={retrySummary}
+            onSave={() => {
+              // 保存機能は後ほど追加可能
+            }}
+          />
         )}
-      </div>
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
-        {/* 🎙️ 録音セクション */}
-        <section className="p-4 border rounded bg-gray-50 space-y-4 shadow">
-          <div className="text-center">
-            <button
-              onClick={recording ? stopFullRecording : startFullRecording}
-              className={`px-6 py-2 rounded text-white font-semibold ${
-                recording ? "bg-red-600" : "bg-blue-600"
-              }`}
-            >
-              {recording ? "録音停止" : "録音開始"}
-            </button>
-          </div>
 
-          <div className="flex justify-center items-center gap-4">
-            <label className="text-sm font-medium">🧠 プロンプト:</label>
-            <select
-              className="border rounded px-2 py-1 text-sm"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            >
-              {PROMPT_OPTIONS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="text-center text-sm font-mono text-gray-700">
-            ⏱️ 経過時間: {formatTime(elapsed)}
-          </div>
-
-          <div className="h-16 bg-gradient-to-r from-indigo-300 to-indigo-500 rounded animate-pulse opacity-30 text-center flex items-center justify-center text-white text-sm">
-            🎵 波形ビジュアライザー（仮）
-          </div>
-        </section>
-
-        {/* 📝 文字起こし表示・編集セクション */}
-        <section className="p-4 border rounded bg-white shadow space-y-4">
-          <h2 className="text-lg font-bold">📝 チャンク文字起こし</h2>
-          <ul className="space-y-3">
-            {logs.map((log) => (
-              <li key={log.id} className="p-3 border rounded bg-gray-50">
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Chunk {log.id}</span>
-                  {log.status === "sending" && "送信中..."}
-                  {log.status === "success" && "✅ 成功"}
-                  {log.status === "error" && "❌ エラー"}
-                </div>
-                {log.text && (
-                  <textarea
-                    defaultValue={log.text}
-                    className="w-full mt-2 p-2 text-sm border rounded resize-y"
-                  />
-                )}
-                <div className="flex gap-2 mt-2">
-                  <button className="text-xs px-2 py-1 bg-gray-200 rounded">
-                    ✏️ 編集
-                  </button>
-                  <button className="text-xs px-2 py-1 bg-blue-200 rounded">
-                    🔁 再取得
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {summary && (
-            <div className="mt-6 p-4 border rounded bg-green-50">
-              <h3 className="font-bold mb-2">📋 要約</h3>
-              <pre className="whitespace-pre-wrap text-sm text-gray-800">
-                {summary}
-              </pre>
-              <button className="mt-2 px-3 py-1 text-sm bg-blue-500 text-white rounded">
-                💾 保存
-              </button>
-            </div>
-          )}
-        </section>
+        <ChunkLogList logs={logs} />
       </div>
     </>
   );

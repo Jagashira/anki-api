@@ -1,5 +1,7 @@
 "use client";
 
+import { FaSpinner } from "react-icons/fa";
+
 type ChunkLog = {
   id: number;
   status: "sending" | "success" | "error";
@@ -9,32 +11,50 @@ type ChunkLog = {
 
 export default function ChunkLogList({ logs }: { logs: ChunkLog[] }) {
   return (
-    <section className="mt-6">
-      <h2 className="text-lg font-semibold mb-2">📦 チャンクログ</h2>
-      <ul className="space-y-3">
-        {logs.map((log) => (
-          <li
-            key={log.id}
-            className={`p-3 border rounded shadow-sm ${
-              log.status === "success"
-                ? "bg-green-50 border-green-300"
-                : log.status === "error"
-                ? "bg-red-50 border-red-300"
-                : "bg-yellow-50 border-yellow-300"
-            }`}
-          >
-            <div className="font-semibold">Chunk {log.id}</div>
-            {log.status === "sending" && <div>⏳ 送信中...</div>}
-            {log.status === "success" && <div>✅ 成功</div>}
-            {log.status === "error" && <div>❌ エラー: {log.error}</div>}
-            {log.text && (
-              <div className="mt-2 text-sm whitespace-pre-wrap text-gray-700">
-                {log.text}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+    <section className="mt-6 space-y-4">
+      <h2 className="text-lg font-bold">📦 チャンクログ</h2>
+
+      {logs.map((log) => (
+        <div
+          key={log.id}
+          className="p-4 rounded-md border shadow-sm bg-white space-y-2"
+        >
+          {/* ヘッダー */}
+          <div className="flex justify-between items-center">
+            <div className="font-semibold text-gray-800">🧩 Chunk {log.id}</div>
+
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${
+                log.status === "success"
+                  ? "bg-green-100 text-green-800"
+                  : log.status === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {log.status === "sending" && (
+                <>
+                  <FaSpinner className="animate-spin" />
+                  送信中...
+                </>
+              )}
+              {log.status === "success" && "✅ 成功"}
+              {log.status === "error" && "❌ エラー"}
+            </span>
+          </div>
+
+          {/* テキスト or エラー */}
+          {log.text && (
+            <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded border">
+              {log.text}
+            </div>
+          )}
+
+          {log.error && (
+            <div className="text-sm text-red-600">⚠️ {log.error}</div>
+          )}
+        </div>
+      ))}
     </section>
   );
 }
