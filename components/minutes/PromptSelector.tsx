@@ -1,50 +1,74 @@
+// components/minutes/PromptSelector.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   prompt: string;
   onChange: (value: string) => void;
 };
+type Prompt = {
+  id: string;
+  label: string;
+  text: string;
+};
 
 export default function PromptSelector({ prompt, onChange }: Props) {
-  const [mode, setMode] = useState<"preset" | "custom">(
-    prompt === "custom" ? "custom" : "preset"
-  );
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [mode, setMode] = useState<"preset" | "custom">("preset");
 
-  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      const res = await fetch("/api/prompts");
+      const data = await res.json();
+      setPrompts(data || []);
+    };
+    fetchPrompts();
+  }, []);
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setMode(value === "custom" ? "custom" : "preset");
-    onChange(value === "custom" ? "" : value);
-  };
-
-  const handleCustomChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+    if (value === "custom") {
+      setMode("custom");
+      onChange("");
+    } else {
+      const selected = prompts.find((p) => p.id === value);
+      if (selected) {
+        setMode("preset");
+        onChange(selected.text);
+      }
+    }
   };
 
   return (
-    <div className="space-y-3">
-      <label className="block text-sm font-semibold text-gray-700">
+    <div className="space-y-2">
+      <label className="text-sm font-semibold text-gray-700">
         📜 プロンプト
       </label>
-
       <select
-        value={mode === "custom" ? "custom" : prompt}
-        onChange={handlePresetChange}
-        className="w-full border border-gray-300 rounded-md px-4 py-2 shadow-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border rounded px-3 py-2 text-sm"
+        onChange={handleSelect}
+        value={
+          mode === "custom"
+            ? "custom"
+            : prompts.find((p) => p.text === prompt)?.id || "custom"
+        }
       >
-        <option value="default">標準的な要約</option>
-        <option value="detailed">詳細な記録</option>
-        <option value="action">TODO抽出</option>
-        <option value="custom">✏️ カスタムプロンプトを入力</option>
+        {prompts.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+        <option value="custom">✏️ カスタム入力</option>
       </select>
 
       {mode === "custom" && (
         <textarea
-          className="w-full border border-gray-300 rounded-md px-4 py-2 min-h-[100px] shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="例）この会議では、アクションアイテムと決定事項を明確に整理してください。"
+          className="w-full border rounded px-3 py-2 text-sm mt-2"
+          rows={3}
           value={prompt}
-          onChange={handleCustomChange}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="プロンプトを自由に入力..."
         />
       )}
     </div>

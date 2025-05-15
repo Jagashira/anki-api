@@ -8,6 +8,7 @@ export async function getAllPrompts(): Promise<Prompt[]> {
   const snap = await getDocs(q);
   return snap.docs.map((doc) => ({
     id: doc.id,
+    label: doc.data().label,
     text: doc.data().text,
   }));
 }

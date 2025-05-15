@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ChunkLogList from "@/components/minutes/ChunkLogList";
 import RecorderCard from "@/components/minutes/RecorderCard";
 import SummaryCard from "@/components/minutes/SummaryCard";
-import { saveMinutes } from "@/lib/minutes/save";
 import { fetchSummary } from "@/lib/minutes/summary";
-import { useRef, useState } from "react";
+import { saveMinutes } from "@/lib/minutes/save";
 
 type ChunkLog = {
   id: number;
@@ -13,20 +13,22 @@ type ChunkLog = {
   text?: string;
   error?: string;
 };
-const PROMPT_OPTIONS = [
-  "議事録風に要約",
-  "要点を箇条書きで",
-  "口語→丁寧文に変換",
-];
+
+type Prompt = {
+  id: string;
+  label: string;
+  text: string;
+};
 
 export default function RecorderPage() {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [logs, setLogs] = useState<ChunkLog[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState(PROMPT_OPTIONS[0]);
-  const [chunkDuration, setChunkDuration] = useState(10); // 単位: 秒
+  const [promptText, setPromptText] = useState(""); // 🧠 プロンプト本文
+  const [chunkDuration, setChunkDuration] = useState(10);
   const [isSaved, setIsSaved] = useState(false);
+  const [loadingPrompts, setLoadingPrompts] = useState(true);
 
   const chunkIdRef = useRef(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,11 +37,27 @@ export default function RecorderPage() {
   const textBufferRef = useRef("");
   const recordingRef = useRef(false);
 
+  // 🔽 プロンプト初期ロード
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      try {
+        const res = await fetch("/api/prompts");
+        const data = await res.json();
+        if (data.length > 0) setPromptText(data[0].text);
+      } catch {
+        setPromptText("会議内容を分かりやすく要約してください。");
+      } finally {
+        setLoadingPrompts(false);
+      }
+    };
+    fetchPrompts();
+  }, []);
+
   const handleSave = async () => {
     if (!summary || logs.length === 0) return;
-    const id = await saveMinutes({ summary, logs, prompt });
+    const id = await saveMinutes({ summary, logs, prompt: promptText });
     alert(`保存しました。ドキュメントID: ${id}`);
-    setIsSaved(true); // ✅ 保存成功後にフラグON
+    setIsSaved(true);
   };
 
   const recordChunk = async (): Promise<void> => {
@@ -58,7 +76,6 @@ export default function RecorderPage() {
 
       recorder.ondataavailable = async (e: BlobEvent) => {
         const blob = e.data;
-        const audio = new Audio(URL.createObjectURL(blob));
 
         const file = new File([blob], `chunk-${id}.webm`, {
           type: "audio/webm;codecs=opus",
@@ -100,7 +117,6 @@ export default function RecorderPage() {
     chunkIdRef.current = 1;
     setElapsed(0);
 
-    // 経過時間タイマー
     timerRef.current = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
@@ -108,7 +124,7 @@ export default function RecorderPage() {
     await recordChunk();
     intervalRef.current = setInterval(() => {
       recordChunk();
-    }, 10_000);
+    }, chunkDuration * 1000);
   };
 
   const stopFullRecording = async () => {
@@ -146,40 +162,46 @@ export default function RecorderPage() {
       prev.map((log) => (log.id === id ? { ...log, ...updates } : log))
     );
   };
+
   const retrySummary = async () => {
     const rawText = textBufferRef.current.trim();
     if (!rawText) return;
-
     const result = await fetchSummary(rawText);
     setSummary(result);
     setIsSaved(false);
   };
 
-  return (
-    <>
-      <div className="p-6 max-w-2xl mx-auto">
-        <RecorderCard
-          recording={recording}
-          elapsed={elapsed}
-          prompt={prompt}
-          stream={streamRef.current}
-          chunkDuration={chunkDuration}
-          onToggle={recording ? stopFullRecording : startFullRecording}
-          onPromptChange={setPrompt}
-          onChunkDurationChange={setChunkDuration}
-        />
-
-        {summary && (
-          <SummaryCard
-            summary={summary}
-            onRetry={retrySummary}
-            onSave={handleSave}
-            disabled={isSaved}
-          />
-        )}
-
-        <ChunkLogList logs={logs} />
+  if (loadingPrompts) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        プロンプト読み込み中...
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <RecorderCard
+        recording={recording}
+        elapsed={elapsed}
+        prompt={promptText}
+        stream={streamRef.current}
+        chunkDuration={chunkDuration}
+        onToggle={recording ? stopFullRecording : startFullRecording}
+        onPromptChange={setPromptText}
+        onChunkDurationChange={setChunkDuration}
+      />
+
+      {summary && (
+        <SummaryCard
+          summary={summary}
+          onRetry={retrySummary}
+          onSave={handleSave}
+          disabled={isSaved}
+        />
+      )}
+
+      <ChunkLogList logs={logs} />
+    </div>
   );
 }
