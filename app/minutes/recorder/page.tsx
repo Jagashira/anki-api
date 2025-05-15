@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { calculateWhisperUsage, getAudioDuration } from "@/lib/usage";
-import { prompts, PromptType } from "@components/speech/PromptSelector";
+import { prompts, PromptType } from "@/components/recordtest/PromptSelector";
 import { saveTranscriptToFirestore } from "@lib/saveTranscript";
-import { TranscriptList } from "@components/speech/TranscriptList";
-import RecordingPromptPanel from "@components/speech/RecordingPromptPanel";
-import { SummaryDisplay } from "@components/speech/SummaryDisplay";
-import GraphDisplay from "@components/speech/GraphDisplay";
+import { TranscriptList } from "@/components/recordtest/TranscriptList";
+import RecordingPromptPanel from "@/components/recordtest/RecordingPromptPanel";
+import { SummaryDisplay } from "@/components/recordtest/SummaryDisplay";
+import GraphDisplay from "@/components/recordtest/GraphDisplay";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
