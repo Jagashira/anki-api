@@ -107,24 +107,33 @@ export default function RecorderPage() {
 
   const startFullRecording = async () => {
     setIsSaved(false);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
-    recordingRef.current = true;
-    setRecording(true);
-    setSummary(null);
-    setLogs([]);
-    textBufferRef.current = "";
-    chunkIdRef.current = 1;
-    setElapsed(0);
+    if (!MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      alert("このブラウザでは録音機能がサポートされていません。");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      recordingRef.current = true;
+      setRecording(true);
+      setSummary(null);
+      setLogs([]);
+      textBufferRef.current = "";
+      chunkIdRef.current = 1;
+      setElapsed(0);
 
-    timerRef.current = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
+      timerRef.current = setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
 
-    await recordChunk();
-    intervalRef.current = setInterval(() => {
-      recordChunk();
-    }, chunkDuration * 1000);
+      await recordChunk();
+      intervalRef.current = setInterval(() => {
+        recordChunk();
+      }, chunkDuration * 1000);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      alert("マイクのアクセスに失敗しました。");
+    }
   };
 
   const stopFullRecording = async () => {
