@@ -1,13 +1,20 @@
-// app/minutes/[id]/page.tsx
 import { getMinutesById } from "@/lib/minutes/getById";
 import { notFound } from "next/navigation";
+import { type Metadata } from "next";
 
-type Props = {
-  params: { id: string };
+type PageProps = {
+  params: {
+    id: string;
+  };
 };
 
-export default async function MinutesDetailPage({ params }: Props) {
-  const minutes = await getMinutesById(params.id);
+export default async function MinutesDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const minutes = await getMinutesById(id);
 
   if (!minutes) return notFound();
 
@@ -15,7 +22,6 @@ export default async function MinutesDetailPage({ params }: Props) {
     ? new Date(minutes.createdAt.seconds * 1000).toLocaleString()
     : "日時不明";
 
-  // ✅ ここで全文を結合（text のみを対象に）
   const fullText = minutes.logs
     .filter((log) => log.text)
     .map((log) => log.text)
@@ -24,7 +30,6 @@ export default async function MinutesDetailPage({ params }: Props) {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">📄 議事録詳細</h1>
-
       <div className="text-sm text-gray-500">作成日時: {formattedDate}</div>
       <div className="font-semibold text-gray-700">
         🧠 プロンプト: {minutes.prompt}
@@ -38,7 +43,7 @@ export default async function MinutesDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* 🧾 チャンク全文結合 */}
+      {/* 🧾 統合テキスト */}
       <section className="mt-6">
         <h2 className="text-lg font-bold mb-2">
           🧾 文字起こし全文（チャンク統合）
