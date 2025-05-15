@@ -6,7 +6,6 @@ import RecorderCard from "@/components/minutes/RecorderCard";
 import SummaryCard from "@/components/minutes/SummaryCard";
 import { fetchSummary } from "@/lib/minutes/summary";
 import { saveMinutes } from "@/lib/minutes/save";
-import RecordRTC from "recordrtc";
 
 type ChunkLog = {
   id: number;
@@ -31,8 +30,20 @@ export default function RecorderPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const textBufferRef = useRef("");
   const recordingRef = useRef(false);
-  const rtcRef = useRef<RecordRTC | null>(null);
+  const rtcRef = useRef<any>(null);
   const isFallbackRef = useRef(false);
+
+  const recordRTCRef = useRef<any>(null);
+
+  useEffect(() => {
+    const loadRecordRTC = async () => {
+      if (typeof window !== "undefined") {
+        const mod = await import("recordrtc");
+        recordRTCRef.current = mod.default;
+      }
+    };
+    loadRecordRTC();
+  }, []);
 
   useEffect(() => {
     const fetchPrompts = async () => {
@@ -89,15 +100,16 @@ export default function RecorderPage() {
         resolve();
       };
 
-      if (isFallbackRef.current) {
-        const recorder = new RecordRTC(stream, {
+      if (isFallbackRef.current && recordRTCRef.current) {
+        const Recorder = recordRTCRef.current;
+        const recorder = new Recorder(stream, {
           type: "audio",
           mimeType: "audio/webm",
         });
         recorder.startRecording();
         rtcRef.current = recorder;
 
-        setTimeout(async () => {
+        setTimeout(() => {
           recorder.stopRecording(() => {
             const blob = recorder.getBlob();
             onChunkReady(blob);
