@@ -14,12 +14,18 @@ type ChunkLog = {
   error?: string;
 };
 
+type Prompt = {
+  id: string;
+  label: string;
+  text: string;
+};
+
 export default function RecorderPage() {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [logs, setLogs] = useState<ChunkLog[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
-  const [promptText, setPromptText] = useState("");
+  const [promptText, setPromptText] = useState(""); // 🧠 プロンプト本文
   const [chunkDuration, setChunkDuration] = useState(10);
   const [isSaved, setIsSaved] = useState(false);
   const [loadingPrompts, setLoadingPrompts] = useState(true);
@@ -30,21 +36,8 @@ export default function RecorderPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const textBufferRef = useRef("");
   const recordingRef = useRef(false);
-  const rtcRef = useRef<any>(null);
-  const isFallbackRef = useRef(false);
 
-  const recordRTCRef = useRef<any>(null);
-
-  useEffect(() => {
-    const loadRecordRTC = async () => {
-      if (typeof window !== "undefined") {
-        const mod = await import("recordrtc");
-        recordRTCRef.current = mod.default;
-      }
-    };
-    loadRecordRTC();
-  }, []);
-
+  // 🔽 プロンプト初期ロード
   useEffect(() => {
     const fetchPrompts = async () => {
       try {
@@ -68,15 +61,22 @@ export default function RecorderPage() {
   };
 
   const recordChunk = async (): Promise<void> => {
-    if (!recordingRef.current || !streamRef.current) return;
+    if (!recordingRef.current && !streamRef.current) return;
 
     const id = chunkIdRef.current++;
     addLog({ id, status: "sending" });
 
     const stream = streamRef.current;
+    if (!stream) return;
 
     return new Promise((resolve) => {
-      const onChunkReady = async (blob: Blob) => {
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
+
+      recorder.ondataavailable = async (e: BlobEvent) => {
+        const blob = e.data;
+
         const file = new File([blob], `chunk-${id}.webm`, {
           type: "audio/webm;codecs=opus",
         });
@@ -100,38 +100,17 @@ export default function RecorderPage() {
         resolve();
       };
 
-      if (isFallbackRef.current && recordRTCRef.current) {
-        const Recorder = recordRTCRef.current;
-        const recorder = new Recorder(stream, {
-          type: "audio",
-          mimeType: "audio/webm",
-        });
-        recorder.startRecording();
-        rtcRef.current = recorder;
-
-        setTimeout(() => {
-          recorder.stopRecording(() => {
-            const blob = recorder.getBlob();
-            onChunkReady(blob);
-          });
-        }, chunkDuration * 1000);
-      } else {
-        const recorder = new MediaRecorder(stream, {
-          mimeType: "audio/webm;codecs=opus",
-        });
-
-        recorder.ondataavailable = (e: BlobEvent) => {
-          onChunkReady(e.data);
-        };
-
-        recorder.start();
-        setTimeout(() => recorder.stop(), chunkDuration * 1000);
-      }
+      recorder.start();
+      setTimeout(() => recorder.stop(), chunkDuration * 1000);
     });
   };
 
   const startFullRecording = async () => {
     setIsSaved(false);
+    if (!MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      alert("このブラウザでは録音機能がサポートされていません。");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -143,9 +122,6 @@ export default function RecorderPage() {
       chunkIdRef.current = 1;
       setElapsed(0);
 
-      // fallback 判定
-      isFallbackRef.current = !window.MediaRecorder;
-
       timerRef.current = setInterval(() => {
         setElapsed((prev) => prev + 1);
       }, 1000);
@@ -155,9 +131,8 @@ export default function RecorderPage() {
         recordChunk();
       }, chunkDuration * 1000);
     } catch (error) {
-      alert(
-        "録音を開始できませんでした。マイクが許可されているか確認してください。"
-      );
+      console.error("Error starting recording:", error);
+      alert("マイクのアクセスに失敗しました。");
     }
   };
 
