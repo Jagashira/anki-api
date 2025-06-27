@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     }
 
     const data = snapshot.data();
-    const { word, selectedDeck, selectedTag, formattedContent } = data;
+    let { word, selectedDeck, selectedTag, formattedContent } = data;
+    selectedDeck = "English Word";
     // 安全性のため、selectedTag を必ず配列にする（undefined を防ぐ）
     const safeTag =
       typeof selectedTag === "string" && selectedTag.trim() !== ""

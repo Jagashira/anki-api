@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { File } from "node-fetch"; // Node.js環境向けの File クラス
+import { File } from "node-fetch";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -15,7 +15,6 @@ export async function POST(req: Request) {
   const arrayBuffer = await uploaded.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  // node-fetch の File クラスで Whisper に渡せる FileLike を生成
   const nodeFile = new File([buffer], "chunk.webm", {
     type: "audio/webm;codecs=opus",
     lastModified: Date.now(),

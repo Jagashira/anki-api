@@ -30,14 +30,16 @@ const NotesList: React.FC<NotesListProps> = ({ notes, loading, error }) => {
       </div>
     );
 
-  if (notes.length === 0) return null;
+  const limitedNotes = notes.slice(0, 10);
+
+  if (limitedNotes.length === 0) return null;
 
   return (
     <div className="max-w-4xl p-6  mx-auto">
       <h2 className="text-lg font-bold mb-2 text-center">取得したノート一覧</h2>
 
       <div className="flex space-x-4 overflow-x-auto pb-4">
-        {notes.map((note) => (
+        {limitedNotes.map((note) => (
           <div
             key={note.noteId}
             className="min-w-[300px] p-4 border rounded bg-white shadow break-words overflow-hidden"
