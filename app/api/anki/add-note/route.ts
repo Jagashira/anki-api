@@ -3,13 +3,6 @@ import getAudioFromGoogle from "@/utils/getAudio";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  // const apiKey = req.headers.get("X-API-Key");
-  // if (apiKey !== process.env.X_API_KEY) {
-  //   return NextResponse.json(
-  //     { error: "Unauthorizedどんまい" },
-  //     { status: 401 }
-  //   );
-  // }
   const { word, selectedTag, selectedDeck, prompt } = await req.json(); // 👈 promptを受け取る
   console.log(word, selectedTag, selectedDeck, prompt);
 

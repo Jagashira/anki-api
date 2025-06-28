@@ -94,7 +94,7 @@ importers:
         version: 3.3.2
       openai:
         specifier: ^4.95.1
-        version: 4.95.1
+        version: 4.95.1(zod@3.25.67)
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -140,6 +140,12 @@ importers:
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
+      zod:
+        specifier: ^3.25.67
+        version: 3.25.67
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.24.6(zod@3.25.67)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
@@ -2665,6 +2671,14 @@ packages:
   yoga-layout@3.2.1:
     resolution: {integrity: sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==}
 
+  zod-to-json-schema@3.24.6:
+    resolution: {integrity: sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg==}
+    peerDependencies:
+      zod: ^3.24.1
+
+  zod@3.25.67:
+    resolution: {integrity: sha512-idA2YXwpCdqUSKRCACDE6ItZD9TZzy3OZMtpfLoh6oPR47lipysRrJfjzMqFxQ3uJuUPyUeWe1r9vLH33xO/Qw==}
+
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
@@ -4959,7 +4973,7 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@4.95.1:
+  openai@4.95.1(zod@3.25.67):
     dependencies:
       '@types/node': 18.19.86
       '@types/node-fetch': 2.6.12
@@ -4968,6 +4982,8 @@ snapshots:
       form-data-encoder: 1.7.2
       formdata-node: 4.4.1
       node-fetch: 2.7.0
+    optionalDependencies:
+      zod: 3.25.67
     transitivePeerDependencies:
       - encoding
 
@@ -5580,5 +5596,11 @@ snapshots:
       yargs-parser: 21.1.1
 
   yoga-layout@3.2.1: {}
+
+  zod-to-json-schema@3.24.6(zod@3.25.67):
+    dependencies:
+      zod: 3.25.67
+
+  zod@3.25.67: {}
 
   zwitch@2.0.4: {}
