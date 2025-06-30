@@ -5,15 +5,22 @@ import OpenAI from "openai";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WordInfoSchema } from "@/lib/anki/schemas";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req: NextRequest) {
   try {
-    const { word, prompt } = await req.json();
+    const { word, prompt, apiKey } = await req.json();
 
-    console.log(`[DEBUG] Received word: "${word}¥n"`); // 受け取った単語をログに出力
+    if (!apiKey) {
+      console.error("[ERROR] API Key is missing in the request body.");
+      return NextResponse.json(
+        { error: "APIキーがリクエストボディに含まれていません" },
+        { status: 400 }
+      );
+    }
+    const openai = new OpenAI({
+      apiKey,
+    });
+
+    console.log(`[DEBUG] Received word: "${word}¥n"`);
 
     if (!word || !prompt) {
       return NextResponse.json(
@@ -51,7 +58,6 @@ export async function POST(req: NextRequest) {
 
     const toolCalls = response.choices[0].message.tool_calls;
 
-    // ▼▼▼ AIからの応答を詳細にログ出力 ▼▼▼
     console.log(
       "[DEBUG] OpenAI Raw Response:",
       JSON.stringify(toolCalls, null, 2)
@@ -68,10 +74,7 @@ export async function POST(req: NextRequest) {
     const functionArgs = toolCalls[0].function.arguments;
     console.log("[DEBUG] AI Response Arguments (JSON String):", functionArgs);
 
-    // JSON文字列をパース
     const parsedArgs = JSON.parse(functionArgs);
-
-    // Zodスキーマで検証 (エラーでクラッシュしないsafeParseを使用)
     const validationResult = WordInfoSchema.safeParse(parsedArgs);
 
     console.log("[DEBUG] Zod Validation Result:", validationResult.success);
@@ -81,7 +84,7 @@ export async function POST(req: NextRequest) {
         "[ERROR] Zod validation failed:",
         validationResult.error.errors
       );
-      // Zodの検証エラーの詳細を返す
+
       return NextResponse.json(
         {
           error: "生成されたデータの形式が正しくありません",
@@ -91,7 +94,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 検証済みのJSONデータを返す
     return NextResponse.json(validationResult.data);
   } catch (error) {
     console.error("API Error:", error);
