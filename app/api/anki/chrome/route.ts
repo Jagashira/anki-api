@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       console.error("[ERROR] API Key is missing in the request body.");
       return NextResponse.json(
-        { error: "APIキーがリクエストボディに含まれていません" },
+        { error: "OptionsにAPIキーを設定してください" },
         { status: 400 }
       );
     }
